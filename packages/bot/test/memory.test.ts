@@ -22,7 +22,7 @@ describe("long-term memory", () => {
 			allowShell: false,
 			timeZone: "Asia/Ho_Chi_Minh",
 			webBackends: [],
-		});
+		}).gateway;
 	}
 
 	it("saves a fact in one turn and shows it in the system prompt of the next turn and of a new chat", async () => {

@@ -24,7 +24,7 @@ async function resolveModel(): Promise<Model<Api>> {
 }
 
 const model = await resolveModel();
-const gateway = createBot({
+const { gateway, scheduler } = createBot({
 	dataDir: config.dataDir,
 	modelRuntime,
 	model,
@@ -42,10 +42,12 @@ const controller = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
 	process.on(signal, () => {
 		controller.abort();
+		scheduler.stop();
 		gateway.dispose();
 	});
 }
 console.log(
 	`[bot] ${model.provider}/${model.id}, data in ${config.dataDir}, shell ${config.allowShell ? "on" : "off"}`,
 );
+scheduler.start();
 await gateway.run(controller.signal);

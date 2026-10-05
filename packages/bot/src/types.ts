@@ -23,6 +23,8 @@ export interface ChatAgent {
 export interface ChatAgentOptions {
 	/** Start a new transcript instead of continuing the most recent one. */
 	fresh: boolean;
+	/** Keep the transcript in memory only. Scheduled runs use this so they never become the chat's latest session. */
+	ephemeral?: boolean;
 }
 
 export type ChatAgentFactory = (chatId: number, options: ChatAgentOptions) => Promise<ChatAgent>;

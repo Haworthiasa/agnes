@@ -58,7 +58,7 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 	const workspace = join(options.dataDir, "workspace");
 	mkdirSync(workspace, { recursive: true });
 
-	return async (chatId, { fresh }) => {
+	return async (chatId, { fresh, ephemeral }) => {
 		const sessionDir = join(options.dataDir, "chats", String(chatId), "sessions");
 		mkdirSync(sessionDir, { recursive: true });
 		const customTools = options.tools?.(chatId) ?? [];
@@ -70,9 +70,11 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 			model: options.model,
 			resourceLoader: createBotResourceLoader(() => options.systemPrompt(chatId)),
 			settingsManager: SettingsManager.inMemory({ retry: { enabled: true, maxRetries: 2 } }),
-			sessionManager: fresh
-				? SessionManager.create(workspace, sessionDir)
-				: SessionManager.continueRecent(workspace, sessionDir),
+			sessionManager: ephemeral
+				? SessionManager.inMemory(workspace)
+				: fresh
+					? SessionManager.create(workspace, sessionDir)
+					: SessionManager.continueRecent(workspace, sessionDir),
 			// An explicit tool list enables only the names it contains, custom tools included.
 			tools: [...builtinTools, ...customTools.map((tool) => tool.name)],
 			customTools,
