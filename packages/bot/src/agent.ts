@@ -12,15 +12,18 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { ChatAgent, ChatAgentFactory } from "./types.ts";
 
-const READ_ONLY_TOOLS = ["read", "grep", "find", "ls"];
-const SHELL_TOOLS = ["bash", "edit", "write"];
+// pi's file tools accept absolute paths, so they can reach secrets outside the workspace.
+const SHELL_TOOLS = ["read", "grep", "find", "ls", "bash", "edit", "write"];
 
 export interface BotAgentFactoryOptions {
 	dataDir: string;
 	modelRuntime: ModelRuntime;
 	/** Omit to use the default model from the runtime's stored settings. */
 	model?: Model<Api>;
-	/** Enables bash, edit and write in the workspace. Off by default: the bot is reachable from the internet. */
+	/**
+	 * Enables pi's file and shell tools. Off by default: the bot reads untrusted web pages, and these tools are
+	 * not confined to the workspace, so an injected page could read local secrets and send them out via web_fetch.
+	 */
 	allowShell: boolean;
 	/** Re-read before every turn, so memory written in one turn reaches the next. */
 	systemPrompt: (chatId: number) => string;
@@ -62,7 +65,7 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 		const sessionDir = join(options.dataDir, "chats", String(chatId), "sessions");
 		mkdirSync(sessionDir, { recursive: true });
 		const customTools = options.tools?.(chatId) ?? [];
-		const builtinTools = options.allowShell ? [...READ_ONLY_TOOLS, ...SHELL_TOOLS] : READ_ONLY_TOOLS;
+		const builtinTools = options.allowShell ? SHELL_TOOLS : [];
 		const { session } = await createAgentSession({
 			cwd: workspace,
 			agentDir: join(options.dataDir, "agent"),

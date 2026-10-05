@@ -6,7 +6,7 @@ Private package. It is not published.
 
 ## Run
 
-1. Run `pi` once and `/login`. The bot shares the pi CLI credentials in `~/.pi/agent/auth.json`.
+1. Give the bot a model. Either run `pi` once and `/login` (the bot shares `~/.pi/agent/auth.json`), or export a provider key, for example `ZAI_API_KEY` for GLM.
 2. Create a bot with [@BotFather](https://t.me/BotFather) and copy the token.
 3. Get your numeric user id, for example from [@userinfobot](https://t.me/userinfobot).
 4. Start the bot from this directory:
@@ -19,10 +19,18 @@ TELEGRAM_BOT_TOKEN=123:abc BOT_ALLOWED_USERS=111111111 npm start
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | required | Bot API token |
 | `BOT_ALLOWED_USERS` | required | Comma-separated Telegram user ids. Everyone else is ignored. |
-| `BOT_MODEL` | first model with credentials | `provider/model-id`, for example `openai-codex/gpt-5.5` |
+| `BOT_MODEL` | pi default model, else first with credentials | `provider/model-id`, for example `zai/glm-5.3-flash` |
 | `BOT_DATA_DIR` | `~/.agnes-bot` | Sessions, memory, jobs and the agent workspace |
 | `BOT_TZ` | `Asia/Ho_Chi_Minh` | Time zone for schedules and the current-time line |
-| `BOT_ALLOW_SHELL` | off | `1` enables `bash`, `edit` and `write` in the workspace |
+| `BOT_ALLOW_SHELL` | off | `1` enables pi's file and shell tools (`read`, `grep`, `find`, `ls`, `bash`, `edit`, `write`) |
+
+With GLM:
+
+```bash
+ZAI_API_KEY=... BOT_MODEL=zai/glm-5.3-flash TELEGRAM_BOT_TOKEN=123:abc BOT_ALLOWED_USERS=111111111 npm start
+```
+
+Security: pi's file tools accept absolute paths, so they are not confined to the workspace. The bot also reads untrusted web pages. With `BOT_ALLOW_SHELL=1`, an injected page could make the bot read local secrets and send them out with `web_fetch`. Enable it only on an isolated machine or container.
 
 Chat commands: `/new` starts a fresh conversation. `/help` lists commands.
 
@@ -32,7 +40,6 @@ Chat commands: `/new` starts a fresh conversation. `/help` lists commands.
 Telegram ──long poll──▶ Gateway ──per chat, in order──▶ pi AgentSession ──▶ tools
    ▲                       │                                 │              web_search / web_fetch
    └──────── sendMessage ◀─┴──────── Scheduler (jobs.json) ◀─┘              memory / schedule
-                                                                            read / grep / find / ls
 ```
 
 - **Sessions.** Each chat has one persistent pi session under `chats/<chatId>/sessions`. A restart continues it.

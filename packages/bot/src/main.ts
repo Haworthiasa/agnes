@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
-import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { createBot } from "./bot.ts";
 import { loadConfig } from "./config.ts";
 import { TelegramTransport } from "./telegram.ts";
@@ -18,6 +18,12 @@ async function resolveModel(): Promise<Model<Api>> {
 		if (!model) throw new Error(`BOT_MODEL ${config.model} is not a known model.`);
 		return model;
 	}
+	// Same default as the pi CLI, from ~/.pi/agent/settings.json.
+	const settings = SettingsManager.create(config.dataDir);
+	const provider = settings.getDefaultProvider();
+	const modelId = settings.getDefaultModel();
+	const preferred = provider && modelId ? modelRuntime.getModel(provider, modelId) : undefined;
+	if (preferred) return preferred;
 	const [first] = await modelRuntime.getAvailable();
 	if (!first) throw new Error("No model has credentials. Run `pi` and `/login`, or set BOT_MODEL.");
 	return first;

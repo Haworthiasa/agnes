@@ -1,4 +1,6 @@
-import { fauxAssistantMessage, type TranscriptContext } from "@earendil-works/pi-ai";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fauxAssistantMessage, fauxToolCall, type TranscriptContext } from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createBotAgentFactory } from "../src/agent.ts";
 import { Gateway, HELP_TEXT } from "../src/gateway.ts";
@@ -97,5 +99,51 @@ describe("Gateway with a real agent session", () => {
 		restarted.dispose();
 
 		expect(seen).toEqual([["tên tôi là An"], ["tên tôi là An", "tôi tên gì?"], ["còn nhớ không?"]]);
+	});
+
+	it("does not expose file tools by default, so a page cannot make the bot read local secrets", async () => {
+		runtime = await createFauxRuntime();
+		const secret = join(runtime.dataDir, "auth.json");
+		writeFileSync(secret, "TOP-SECRET");
+		let toolOutput = "";
+		runtime.faux.setResponses([
+			fauxAssistantMessage([fauxToolCall("read", { path: secret })], { stopReason: "toolUse" }),
+			(context) => {
+				const result = context.messages.findLast((message) => message.role === "toolResult");
+				if (result?.role === "toolResult") {
+					toolOutput = result.content.map((part) => (part.type === "text" ? part.text : "")).join("");
+				}
+				return fauxAssistantMessage("done");
+			},
+		]);
+		const gateway = createGateway(new FakeTransport());
+
+		await gateway.handle({ chatId: 1, userId: OWNER, text: "read it" });
+		gateway.dispose();
+
+		expect(toolOutput).not.toContain("TOP-SECRET");
+		expect(toolOutput).toContain("read");
+	});
+});
+
+describe("Gateway session creation", () => {
+	it("retries a chat whose session failed to start", async () => {
+		const transport = new FakeTransport();
+		let attempts = 0;
+		const gateway = new Gateway({
+			transport,
+			allowedUserIds: new Set([OWNER]),
+			createAgent: async () => {
+				attempts++;
+				if (attempts <= 2) throw new Error("auth expired");
+				return { prompt: async (text) => `echo ${text}`, dispose: () => {} };
+			},
+		});
+
+		await gateway.handle({ chatId: 1, userId: OWNER, text: "one" });
+		await gateway.handle({ chatId: 1, userId: OWNER, text: "two" });
+
+		expect(transport.sent.map((entry) => entry.text)).toEqual(["Lỗi: auth expired", "echo two"]);
+		expect(attempts).toBe(3);
 	});
 });

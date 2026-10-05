@@ -44,7 +44,7 @@ export class Gateway {
 		if (text === "/start" || text === "/help") return this.transport.send(message.chatId, HELP_TEXT);
 		if (text === "/new") return this.enqueue(message.chatId, () => this.reset(message.chatId));
 		return this.enqueue(message.chatId, async () => {
-			const agent = await this.chat(message.chatId).agent;
+			const agent = await this.agentFor(message.chatId, this.chat(message.chatId));
 			await this.transport.typing(message.chatId).catch(() => {});
 			const reply = await agent.prompt(text);
 			await this.transport.send(message.chatId, reply || "(không có phản hồi)");
@@ -52,23 +52,40 @@ export class Gateway {
 	}
 
 	dispose(): void {
-		for (const state of this.chats.values()) void state.agent.then((agent) => agent.dispose());
+		for (const state of this.chats.values()) void state.agent.then((agent) => agent.dispose()).catch(() => {});
 		this.chats.clear();
 	}
 
 	private chat(chatId: number): ChatState {
 		let state = this.chats.get(chatId);
 		if (!state) {
-			state = { agent: this.createAgent(chatId, { fresh: false }), queue: Promise.resolve() };
+			state = { agent: this.startAgent(chatId, false), queue: Promise.resolve() };
 			this.chats.set(chatId, state);
 		}
 		return state;
 	}
 
+	private startAgent(chatId: number, fresh: boolean): Promise<ChatAgent> {
+		const agent = this.createAgent(chatId, { fresh });
+		// Awaited later, behind earlier turns. Without a handler, an early rejection would crash the process.
+		agent.catch(() => {});
+		return agent;
+	}
+
+	/** A failed session start does not stick: the next turn tries again. */
+	private async agentFor(chatId: number, state: ChatState): Promise<ChatAgent> {
+		try {
+			return await state.agent;
+		} catch {
+			state.agent = this.startAgent(chatId, false);
+			return state.agent;
+		}
+	}
+
 	private async reset(chatId: number): Promise<void> {
 		const state = this.chat(chatId);
-		(await state.agent).dispose();
-		state.agent = this.createAgent(chatId, { fresh: true });
+		(await state.agent.catch(() => undefined))?.dispose();
+		state.agent = this.startAgent(chatId, true);
 		await state.agent;
 		await this.transport.send(chatId, "Đã bắt đầu hội thoại mới.");
 	}
