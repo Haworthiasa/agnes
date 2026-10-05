@@ -2,11 +2,10 @@
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
-import { createBotAgentFactory } from "./agent.ts";
+import { createBot } from "./bot.ts";
 import { loadConfig } from "./config.ts";
-import { Gateway } from "./gateway.ts";
 import { TelegramTransport } from "./telegram.ts";
-import { createDefaultWebBackends, createWebTools } from "./tools/web.ts";
+import { createDefaultWebBackends } from "./tools/web.ts";
 
 const config = loadConfig();
 // Shares credentials with the pi CLI: run `pi` and `/login` once on this machine.
@@ -25,23 +24,18 @@ async function resolveModel(): Promise<Model<Api>> {
 }
 
 const model = await resolveModel();
-const webTools = createWebTools(createDefaultWebBackends());
-const transport = new TelegramTransport({
-	token: config.telegramToken,
-	offsetPath: join(config.dataDir, "telegram-offset"),
-});
-const gateway = new Gateway({
-	transport,
-	allowedUserIds: config.allowedUserIds,
-	createAgent: createBotAgentFactory({
-		dataDir: config.dataDir,
-		modelRuntime,
-		model,
-		allowShell: config.allowShell,
-		tools: () => webTools,
-		systemPrompt: () =>
-			`You are Agnes, a personal assistant chatting on Telegram. Reply in the user's language. Keep replies short and use plain text, not Markdown tables. Current time zone: ${config.timeZone}.`,
+const gateway = createBot({
+	dataDir: config.dataDir,
+	modelRuntime,
+	model,
+	transport: new TelegramTransport({
+		token: config.telegramToken,
+		offsetPath: join(config.dataDir, "telegram-offset"),
 	}),
+	allowedUserIds: config.allowedUserIds,
+	allowShell: config.allowShell,
+	timeZone: config.timeZone,
+	webBackends: createDefaultWebBackends(),
 });
 
 const controller = new AbortController();
