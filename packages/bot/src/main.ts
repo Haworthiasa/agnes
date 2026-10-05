@@ -30,6 +30,12 @@ async function resolveModel(): Promise<Model<Api>> {
 }
 
 const model = await resolveModel();
+const auth = await modelRuntime.checkAuth(model.provider);
+if (!auth) {
+	throw new Error(
+		`No credentials for ${model.provider}. Export its API key (for example ZAI_API_KEY for zai) or run \`pi\` and \`/login\`.`,
+	);
+}
 const { gateway, scheduler } = createBot({
 	dataDir: config.dataDir,
 	modelRuntime,
@@ -53,7 +59,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 	});
 }
 console.log(
-	`[bot] ${model.provider}/${model.id}, data in ${config.dataDir}, shell ${config.allowShell ? "on" : "off"}`,
+	`[bot] ${model.provider}/${model.id} (auth: ${auth.source}), data in ${config.dataDir}, shell ${config.allowShell ? "on" : "off"}`,
 );
 scheduler.start();
 await gateway.run(controller.signal);
