@@ -6,6 +6,7 @@ import { createBotAgentFactory } from "./agent.ts";
 import { loadConfig } from "./config.ts";
 import { Gateway } from "./gateway.ts";
 import { TelegramTransport } from "./telegram.ts";
+import { createDefaultWebBackends, createWebTools } from "./tools/web.ts";
 
 const config = loadConfig();
 // Shares credentials with the pi CLI: run `pi` and `/login` once on this machine.
@@ -24,6 +25,7 @@ async function resolveModel(): Promise<Model<Api>> {
 }
 
 const model = await resolveModel();
+const webTools = createWebTools(createDefaultWebBackends());
 const transport = new TelegramTransport({
 	token: config.telegramToken,
 	offsetPath: join(config.dataDir, "telegram-offset"),
@@ -36,6 +38,7 @@ const gateway = new Gateway({
 		modelRuntime,
 		model,
 		allowShell: config.allowShell,
+		tools: () => webTools,
 		systemPrompt: () =>
 			`You are Agnes, a personal assistant chatting on Telegram. Reply in the user's language. Keep replies short and use plain text, not Markdown tables. Current time zone: ${config.timeZone}.`,
 	}),
