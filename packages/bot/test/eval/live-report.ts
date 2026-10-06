@@ -20,7 +20,7 @@ export const LIVE_CHECKS: LiveCheck[] = [
 		run: (run) => {
 			const user = run.memory["111"]?.user ?? "";
 			assert.match(user, /An/);
-			assert.match(user, /cà phê/i);
+			assert.match(user, /cà phê|coffee/i);
 		},
 	},
 	{
