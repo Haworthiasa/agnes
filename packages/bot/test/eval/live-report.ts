@@ -115,6 +115,8 @@ export interface LiveCheckStat {
 	expectFail?: string;
 	passes: number;
 	runs: number;
+	/** Why the failed runs failed, to tell a model slip from a bug. */
+	failures: string[];
 }
 
 export interface LiveReport {
@@ -157,15 +159,29 @@ export function buildLiveReport(meta: LiveReport["meta"], runs: LiveRun[]): Live
 	const checks = LIVE_CHECKS.flatMap((check): LiveCheckStat[] => {
 		const own = runs.filter((run) => run.journeyId === check.journeyId);
 		if (own.length === 0) return [];
-		const passes = own.filter((run) => {
+		const failures: string[] = [];
+		for (const run of own) {
 			try {
 				check.run(run);
-				return true;
-			} catch {
-				return false;
+			} catch (error) {
+				failures.push(
+					String((error as Error).message)
+						.replace(/\s+/g, " ")
+						.slice(0, 240),
+				);
 			}
-		}).length;
-		return [{ name: check.name, journeyId: check.journeyId, expectFail: check.expectFail, passes, runs: own.length }];
+		}
+		const passes = own.length - failures.length;
+		return [
+			{
+				name: check.name,
+				journeyId: check.journeyId,
+				expectFail: check.expectFail,
+				passes,
+				runs: own.length,
+				failures,
+			},
+		];
 	});
 	const sample = ids.map((id) => {
 		const first = runs.find((run) => run.journeyId === id) as LiveRun;
@@ -214,10 +230,10 @@ export function renderLiveMarkdown(report: LiveReport): string {
 		"",
 		"## Checks (pass rate over repeats)",
 		"",
-		...report.checks.map(
-			(check) =>
-				`- ${check.passes}/${check.runs}${check.expectFail ? ` (builds in ${check.expectFail})` : ""}: ${check.name}`,
-		),
+		...report.checks.flatMap((check) => [
+			`- ${check.passes}/${check.runs}${check.expectFail ? ` (builds in ${check.expectFail})` : ""}: ${check.name}`,
+			...check.failures.map((failure) => `    - failed: ${failure}`),
+		]),
 		"",
 		"## Metrics per journey (mean ± sd, range)",
 	];
