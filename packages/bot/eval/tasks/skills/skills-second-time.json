@@ -1,0 +1,56 @@
+{
+	"id": "skills-second-time",
+	"category": "skills",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "The user gives the same 3-part request a second time, as in an earlier session. The agent saves it as a skill.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"sessions": [
+					{
+						"daysAgo": 2,
+						"messages": [
+							{
+								"role": "user",
+								"text": "Tóm tắt giúp mình email này theo 3 phần: 1) Tiêu đề, 2) Ý chính (tối đa 2 câu), 3) Việc cần làm. Email: Anh Nam ơi, mai họp lúc 9h, nhớ mang báo cáo quý 3."
+							},
+							{
+								"role": "assistant",
+								"text": "1) Tiêu đề: Họp mai 9h\n2) Ý chính: Mai họp lúc 9h, cần mang báo cáo quý 3.\n3) Việc cần làm: Chuẩn bị báo cáo quý 3."
+							}
+						]
+					}
+				]
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Tóm tắt giúp mình email này theo 3 phần: 1) Tiêu đề, 2) Ý chính (tối đa 2 câu), 3) Việc cần làm. Email: Chị Mai nhắn, chiều thứ Sáu nộp bảng chấm công, cuối tháng chốt lương."
+		}
+	],
+	"graders": [
+		{
+			"kind": "skillExists",
+			"required": true
+		},
+		{
+			"kind": "skillBodyMatches",
+			"pattern": "tiêu đề",
+			"required": true
+		}
+	],
+	"reference": {
+		"skills": [
+			{
+				"name": "tom-tat-email",
+				"description": "Tóm tắt email thành 3 phần",
+				"body": "Tóm tắt email theo 3 phần:\n1) Tiêu đề\n2) Ý chính (tối đa 2 câu)\n3) Việc cần làm"
+			}
+		]
+	}
+}

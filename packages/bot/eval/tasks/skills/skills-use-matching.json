@@ -1,0 +1,44 @@
+{
+	"id": "skills-use-matching",
+	"category": "skills",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "A saved skill matches the request. The agent follows its format.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"skills": [
+					{
+						"name": "phim-3-gach",
+						"description": "Trả lời tên phim bằng 3 gạch đầu dòng",
+						"body": "Khi user gửi tên một bộ phim, trả lời đúng 3 gạch đầu dòng:\n- thể loại\n- năm ra mắt\n- một câu giới thiệu"
+					}
+				]
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Phim: Inception"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "(^|\\n)\\s*[-•*]\\s+\\S.*\\n\\s*[-•*]\\s+\\S.*\\n\\s*[-•*]\\s+\\S",
+			"required": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "follows-skill-format",
+			"question": "Does the reply have exactly 3 bullet lines: genre, release year, and a one-sentence intro?",
+			"passWhen": "The reply is 3 bullets in that order and nothing else of substance."
+		}
+	],
+	"reference": {
+		"reply": "- Thể loại: khoa học viễn tưởng\n- Năm ra mắt: 2010\n- Một nhóm trộm ý tưởng đi vào giấc mơ để cấy một ý nghĩ."
+	}
+}

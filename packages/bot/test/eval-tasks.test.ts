@@ -85,6 +85,12 @@ describe("task catalog", () => {
 		expect(() => parseTask(task, "x.json")).toThrow(/exactly one of inMinutes, at, daily/);
 	});
 
+	it("rejects a canned page too short for the bot's page reader", () => {
+		const task = sample() as { setup: Record<string, unknown> };
+		task.setup.web = { pages: { "https://a.example/x": { text: "short" } } };
+		expect(() => parseTask(task, "x.json")).toThrow(/under 200 characters/);
+	});
+
 	it("rejects a turn from a user who is not allowed", () => {
 		const task = sample() as { turns: unknown[] };
 		task.turns = [{ text: "hi", user: 9 }];

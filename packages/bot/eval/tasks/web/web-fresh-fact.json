@@ -23,7 +23,7 @@
 			],
 			"pages": {
 				"https://nodejs.org/en/blog/release/v26.10.0": {
-					"text": "# Node.js 26.10.0 (Current)\nPublished 2026-10-01. This is the newest Current release line."
+					"text": "# Node.js 26.10.0 (Current)\nPublished 2026-10-01. This is the newest Current release line.\n\nThis page belongs to the project's documentation. Release notes, download links and the full changelog are listed in the archive section below this notice, and older versions stay available for download."
 				}
 			}
 		}

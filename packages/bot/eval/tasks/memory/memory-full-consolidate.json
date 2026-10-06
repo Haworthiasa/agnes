@@ -1,0 +1,66 @@
+{
+	"id": "memory-full-consolidate",
+	"category": "memory",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "USER.md is nearly full (1380 of 1400 chars). The agent frees room and saves the new fact in one call, with no failed tool call.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"memory": {
+					"user": [
+						"Tên là Hạnh, sống ở Đà Nẵng, làm kế toán cho một công ty xây dựng nhỏ, đi làm bằng xe máy và thường về nhà lúc sáu giờ chiều, cuối tháng hay phải làm thêm giờ để chốt sổ sách cho kỳ báo cáo.",
+						"Thích đọc sách trinh thám vào cuối tuần, đặc biệt các truyện của Higashino Keigo, thường mượn sách ở thư viện thành phố gần nhà, mỗi lần mượn tối đa ba cuốn và hay trả sách trễ vài ngày.",
+						"Ăn chay vào ngày mùng một và ngày rằm hằng tháng, không ăn hành tỏi trong những ngày đó, thích món đậu hũ sốt cà chua và canh nấm, không thích món quá cay hoặc quá nhiều dầu mỡ.",
+						"Chạy bộ ba buổi mỗi tuần vào sáng sớm, quanh bán đảo Sơn Trà, khoảng tám cây số mỗi buổi, đang tập cho giải bán marathon cuối năm.",
+						"Con gái tên là Mai, học lớp bốn, hay có bài tập tiếng Anh cần được kiểm tra vào buổi tối, thích vẽ tranh và học piano ngày thứ Bảy, cô giáo dạy ở gần nhà và lớp bắt đầu lúc chín giờ sáng.",
+						"Thường họp với khách hàng vào sáng thứ Ba và thứ Năm nên tránh đặt việc khác vào hai buổi đó, cần nhắc trước ba mươi phút.",
+						"Dùng điện thoại Android, ưu tiên các ứng dụng không quảng cáo và thông báo ít, hay quên sạc pin nên cần nhắc buổi tối.",
+						"Thích uống trà sen buổi chiều, không đường, hay mua ở tiệm gần nhà, ngày thường uống hai ly, cuối tuần uống nhiều hơn.",
+						"Chồng tên là Quân, làm kỹ sư điện, hay đi công tác xa vào đầu tháng, cả nhà thường đi ăn ngoài vào tối Chủ nhật hằng tuần."
+					]
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Mình vừa chuyển sang làm ở công ty ABC Logistics, nhớ giúp mình nhé."
+		}
+	],
+	"graders": [
+		{
+			"kind": "memoryMatches",
+			"target": "user",
+			"pattern": "ABC Logistics",
+			"required": true
+		},
+		{
+			"kind": "noToolErrors",
+			"required": true
+		},
+		{
+			"kind": "maxToolCalls",
+			"n": 3
+		}
+	],
+	"reference": {
+		"memory": {
+			"user": [
+				"Tên là Hạnh, sống ở Đà Nẵng, làm kế toán cho một công ty xây dựng nhỏ, đi làm bằng xe máy và thường về nhà lúc sáu giờ chiều, cuối tháng hay phải làm thêm giờ để chốt sổ sách cho kỳ báo cáo.",
+				"Thích đọc sách trinh thám vào cuối tuần, đặc biệt các truyện của Higashino Keigo, thường mượn sách ở thư viện thành phố gần nhà, mỗi lần mượn tối đa ba cuốn và hay trả sách trễ vài ngày.",
+				"Ăn chay vào ngày mùng một và ngày rằm hằng tháng, không ăn hành tỏi trong những ngày đó, thích món đậu hũ sốt cà chua và canh nấm, không thích món quá cay hoặc quá nhiều dầu mỡ.",
+				"Chạy bộ ba buổi mỗi tuần vào sáng sớm, quanh bán đảo Sơn Trà, khoảng tám cây số mỗi buổi, đang tập cho giải bán marathon cuối năm.",
+				"Con gái tên là Mai, học lớp bốn, hay có bài tập tiếng Anh cần được kiểm tra vào buổi tối, thích vẽ tranh và học piano ngày thứ Bảy, cô giáo dạy ở gần nhà và lớp bắt đầu lúc chín giờ sáng.",
+				"Thường họp với khách hàng vào sáng thứ Ba và thứ Năm nên tránh đặt việc khác vào hai buổi đó, cần nhắc trước ba mươi phút.",
+				"Dùng điện thoại Android, ưu tiên các ứng dụng không quảng cáo và thông báo ít, hay quên sạc pin nên cần nhắc buổi tối.",
+				"Thích uống trà sen buổi chiều, không đường, hay mua ở tiệm gần nhà, ngày thường uống hai ly, cuối tuần uống nhiều hơn.",
+				"Làm ở công ty ABC Logistics"
+			]
+		},
+		"reply": "Đã nhớ: bạn làm ở ABC Logistics."
+	}
+}

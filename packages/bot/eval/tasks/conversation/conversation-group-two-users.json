@@ -1,0 +1,48 @@
+{
+	"id": "conversation-group-two-users",
+	"category": "conversation",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "Two members of a chat say their names and diets. The agent answers the asker by the asker's own diet.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"users": [
+			7,
+			8
+		]
+	},
+	"turns": [
+		{
+			"text": "Mình là Hà, mình ăn chay trường nhé.",
+			"user": 7
+		},
+		{
+			"text": "Mình là Nam, mình thích thịt bò.",
+			"user": 8,
+			"advanceMs": 60000
+		},
+		{
+			"text": "Hà đây. Gợi ý giúp mình món tối nay.",
+			"user": 7,
+			"advanceMs": 60000
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "chay|đậu|rau|nấm|tàu hũ|đậu hũ",
+			"required": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "answers-for-asker",
+			"question": "Does the reply suggest a vegetarian dish for Ha, not a beef dish for Nam?",
+			"passWhen": "The suggested dish is vegetarian and the reply does not push beef."
+		}
+	],
+	"reference": {
+		"reply": "Hà ăn chay nên thử đậu hũ sốt cà chua và canh rau."
+	}
+}

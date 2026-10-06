@@ -1,0 +1,28 @@
+{
+	"id": "time-relative-hours",
+	"category": "time",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "The user asks for a reminder in two and a half hours. The job is due 150 minutes after that message.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Nhắc mình sau 2 tiếng rưỡi nộp báo cáo nhé."
+		}
+	],
+	"graders": [
+		{
+			"kind": "jobDue",
+			"inMinutes": 150,
+			"required": true
+		}
+	],
+	"reference": {
+		"jobDueInMinutes": 150,
+		"reply": "Ok, 2 tiếng rưỡi nữa mình nhắc bạn nộp báo cáo."
+	}
+}

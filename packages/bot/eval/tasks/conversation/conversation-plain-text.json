@@ -1,0 +1,28 @@
+{
+	"id": "conversation-plain-text",
+	"category": "conversation",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "The user asks for a comparison. The reply is plain text, not a Markdown table.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "So sánh giúp mình iPhone và Android về giá, camera và pin."
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "\\|\\s*:?-{3,}",
+			"negate": true,
+			"required": true
+		}
+	],
+	"reference": {
+		"reply": "Giá: iPhone thường cao hơn, Android có nhiều mức. Camera: cả hai đều tốt. Pin: Android thường lớn hơn."
+	}
+}

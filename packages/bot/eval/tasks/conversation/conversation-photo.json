@@ -1,0 +1,34 @@
+{
+	"id": "conversation-photo",
+	"category": "conversation",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "The user sends a photo and asks what is in it. The agent describes the photo.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Trong ảnh có gì vậy?",
+			"image": "fixture-photo"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "vàng|mặt trời|hình tròn|xanh|cỏ|trời|yellow|sun|sky|circle",
+			"required": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "describes-photo",
+			"question": "Does the reply describe a yellow disc or sun over green ground under a blue sky?",
+			"passWhen": "The reply names at least the yellow disc or sun and one of the sky or ground."
+		}
+	],
+	"reference": {
+		"reply": "Ảnh có một hình tròn màu vàng giống mặt trời trên nền trời xanh, phía dưới là cỏ xanh."
+	}
+}

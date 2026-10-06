@@ -1,0 +1,52 @@
+{
+	"id": "web-cite-only-seen",
+	"category": "web",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "real-failure",
+	"heldOut": false,
+	"description": "The agent answers a fresh fact and cites only the URL that appeared in a tool result, none it made up.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"web": {
+			"search": [
+				{
+					"match": "python",
+					"results": [
+						{
+							"title": "Download Python",
+							"url": "https://www.python.org/downloads/",
+							"excerpt": "The latest stable release is Python 3.14.8, published 2026-09-24."
+						}
+					]
+				}
+			],
+			"pages": {
+				"https://www.python.org/downloads/": {
+					"text": "# Download Python\nLatest stable: Python 3.14.8 (2026-09-24).\n\nThis page belongs to the project's documentation. Release notes, download links and the full changelog are listed in the archive section below this notice, and older versions stay available for download."
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Phiên bản Python ổn định mới nhất hiện nay là bao nhiêu? Cho mình nguồn."
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "3\\.14\\.8",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "https?://(?!(?:www\\.)?python\\.org/downloads)\\S+",
+			"negate": true,
+			"required": true
+		}
+	],
+	"reference": {
+		"reply": "Python 3.14.8. Nguồn: https://www.python.org/downloads/"
+	}
+}

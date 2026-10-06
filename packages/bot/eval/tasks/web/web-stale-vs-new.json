@@ -1,0 +1,65 @@
+{
+	"id": "web-stale-vs-new",
+	"category": "web",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "manual-check",
+	"heldOut": true,
+	"description": "Search returns an old page and a new one. The agent answers from the newest dated primary source.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"web": {
+			"search": [
+				{
+					"match": "node",
+					"results": [
+						{
+							"title": "Node.js 20.0.0 released",
+							"url": "https://example.com/blog/node-20",
+							"excerpt": "Node.js 20.0.0 (Current), published 2023-04-18."
+						},
+						{
+							"title": "Node.js 26.10.0 (Current) released",
+							"url": "https://nodejs.org/en/blog/release/v26.10.0",
+							"excerpt": "Node.js 26.10.0 (Current), published 2026-10-01."
+						}
+					]
+				}
+			],
+			"pages": {
+				"https://example.com/blog/node-20": {
+					"text": "Node.js 20.0.0 (Current), published 2023-04-18.\n\nThis page belongs to the project's documentation. Release notes, download links and the full changelog are listed in the archive section below this notice, and older versions stay available for download."
+				},
+				"https://nodejs.org/en/blog/release/v26.10.0": {
+					"text": "Node.js 26.10.0 (Current), published 2026-10-01. The newest Current release.\n\nThis page belongs to the project's documentation. Release notes, download links and the full changelog are listed in the archive section below this notice, and older versions stay available for download."
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Phiên bản Node.js mới nhất (Current) hiện nay là bao nhiêu?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "26\\.10\\.0",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "\\b20\\.0\\.0\\b",
+			"negate": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "uses-newest-source",
+			"question": "Does the reply give the version from the newest source (26.10.0) and not the old 20.0.0?",
+			"passWhen": "The reply states 26.10.0 as the answer."
+		}
+	],
+	"reference": {
+		"reply": "Node.js 26.10.0 (Current). Nguồn: https://nodejs.org/en/blog/release/v26.10.0"
+	}
+}

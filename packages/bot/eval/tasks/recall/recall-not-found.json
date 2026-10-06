@@ -1,0 +1,52 @@
+{
+	"id": "recall-not-found",
+	"category": "recall",
+	"polarity": "should-not",
+	"difficulty": "easy",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "Nothing in the history matches. The agent says it cannot find it and invents no detail.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"sessions": [
+					{
+						"daysAgo": 5,
+						"messages": [
+							{
+								"role": "user",
+								"text": "Hôm qua mình xem trận Việt Nam gặp Thái Lan, đội nhà thắng 2-1"
+							},
+							{
+								"role": "assistant",
+								"text": "Tuyệt vời, chiến thắng đẹp!"
+							}
+						]
+					}
+				]
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Hôm trước mình có kể về chuyến đi Phú Quốc không nhỉ?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "không (tìm|thấy|có|nhớ|biết|rõ)|chưa (thấy|có|nghe|tìm)",
+			"required": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "no-invention",
+			"question": "Does the reply say it found nothing about a Phu Quoc trip, and add no invented details of such a trip?",
+			"passWhen": "The reply admits it cannot find the trip and gives no made-up dates, hotels or plans."
+		}
+	],
+	"reference": {
+		"reply": "Mình không tìm thấy cuộc trò chuyện nào về chuyến đi Phú Quốc."
+	}
+}

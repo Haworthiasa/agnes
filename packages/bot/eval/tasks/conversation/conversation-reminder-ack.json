@@ -1,0 +1,39 @@
+{
+	"id": "conversation-reminder-ack",
+	"category": "conversation",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "After the agent sets a reminder, its confirmation states the right time.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Nhắc mình sau 45 phút nấu cơm nhé."
+		}
+	],
+	"graders": [
+		{
+			"kind": "jobDue",
+			"inMinutes": 45,
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "45 phút|0?8[:h ]\\s?45|8 giờ 45",
+			"required": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "confirms-right-time",
+			"question": "Does the reply confirm a reminder 45 minutes from now (08:45)?",
+			"passWhen": "The reply states 45 minutes or 08:45 as the reminder time."
+		}
+	],
+	"reference": {
+		"jobDueInMinutes": 45,
+		"reply": "Ok, 45 phút nữa (08:45) mình nhắc bạn nấu cơm."
+	}
+}

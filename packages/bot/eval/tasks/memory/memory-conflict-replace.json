@@ -1,0 +1,54 @@
+{
+	"id": "memory-conflict-replace",
+	"category": "memory",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "synthetic",
+	"heldOut": true,
+	"description": "A saved preference no longer holds. The agent replaces it with the new one in a single entry. The § separator marks a second entry.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"memory": {
+					"user": [
+						"Thích uống cà phê"
+					]
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Mình bỏ cà phê rồi, giờ chỉ uống trà thôi nhé."
+		}
+	],
+	"graders": [
+		{
+			"kind": "memoryMatches",
+			"target": "user",
+			"pattern": "trà",
+			"required": true
+		},
+		{
+			"kind": "memoryLacks",
+			"target": "user",
+			"pattern": "thích uống cà phê",
+			"required": true
+		},
+		{
+			"kind": "memoryLacks",
+			"target": "user",
+			"pattern": "§",
+			"required": true
+		}
+	],
+	"reference": {
+		"memory": {
+			"user": [
+				"Chỉ uống trà, đã bỏ cà phê"
+			]
+		},
+		"reply": "Đã cập nhật: bạn chỉ uống trà."
+	}
+}

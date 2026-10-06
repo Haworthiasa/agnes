@@ -18,7 +18,7 @@ import {
 	verdict,
 } from "./guardrails.ts";
 import { type PriceSnapshot, priceOf, turnRecorder } from "./live.ts";
-import { fixturePhoto, readTaskState, seedTask, taskJourney, taskWebBackends } from "./seed.ts";
+import { fixturePhoto, readTaskState, seedTask, taskFetchImage, taskJourney, taskWebBackends } from "./seed.ts";
 import { fisherDropP, mean } from "./stats.ts";
 import { CATEGORIES, type CapabilityTask, type Category } from "./tasks.ts";
 
@@ -115,6 +115,7 @@ export async function runTrial(task: CapabilityTask, trial: number, options: Tri
 						allowShell: false,
 						timeZone: TIME_ZONE,
 						webBackends: taskWebBackends(task),
+						fetchImage: taskFetchImage(task),
 						now: () => clock.now,
 						promptSalt: salt,
 					}),

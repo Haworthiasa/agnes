@@ -1,0 +1,48 @@
+{
+	"id": "memory-save-correction",
+	"category": "memory",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "The user corrects a saved name. The agent replaces the entry; the old name does not stay.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"memory": {
+					"user": [
+						"Tên là Lan"
+					]
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Mình nhầm, tên mình là Linh chứ không phải Lan. Sửa lại giúp mình."
+		}
+	],
+	"graders": [
+		{
+			"kind": "memoryMatches",
+			"target": "user",
+			"pattern": "Linh",
+			"required": true
+		},
+		{
+			"kind": "memoryLacks",
+			"target": "user",
+			"pattern": "\\bLan\\b",
+			"required": true
+		}
+	],
+	"reference": {
+		"memory": {
+			"user": [
+				"Tên là Linh"
+			]
+		},
+		"reply": "Đã sửa: tên bạn là Linh."
+	}
+}

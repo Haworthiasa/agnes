@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chatDir } from "../../src/bot.ts";
@@ -90,11 +90,20 @@ export function seedTask(task: CapabilityTask, dataDir: string): void {
 	}
 }
 
-/** Writes the reference memory and skills into the default chat, to check that the state graders accept it. */
+/**
+ * Writes the reference memory and skills into the default chat, to check that the state graders accept it. The
+ * reference is the whole final state, so it replaces what the seeding wrote.
+ */
 export function seedReference(task: CapabilityTask, dataDir: string): void {
 	const { memory, skills } = task.reference;
-	if (memory) seedMemory(dataDir, DEFAULT_CHAT, memory);
-	if (skills) seedSkills(dataDir, DEFAULT_CHAT, skills);
+	if (memory) {
+		rmSync(join(chatDir(dataDir, DEFAULT_CHAT), "memory"), { recursive: true, force: true });
+		seedMemory(dataDir, DEFAULT_CHAT, memory);
+	}
+	if (skills) {
+		rmSync(join(chatDir(dataDir, DEFAULT_CHAT), "skills"), { recursive: true, force: true });
+		seedSkills(dataDir, DEFAULT_CHAT, skills);
+	}
 }
 
 export interface TaskJourney {
@@ -225,4 +234,17 @@ export function referenceInput(task: CapabilityTask, dataDir: string, timeZone =
 		last.jobs = [job({ kind: "daily", time: jobDaily }, last.clockMs)];
 	}
 	return { task, turns, before, after, timeZone };
+}
+
+/**
+ * An image download for the task: every image URL the canned web lists answers with the fixture PNG, any other URL
+ * with a 404. A reply that shows such an image reaches the transport as a photo, so a grader can see it.
+ */
+export function taskFetchImage(task: CapabilityTask): typeof fetch {
+	const known = new Set(Object.values(task.setup.web?.pages ?? {}).flatMap((page) => page.images ?? []));
+	return (async (input: string | URL | Request) => {
+		const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+		if (!known.has(url)) return new Response("not found", { status: 404 });
+		return new Response(fixturePhoto(), { headers: { "content-type": "image/png" } });
+	}) as typeof fetch;
 }

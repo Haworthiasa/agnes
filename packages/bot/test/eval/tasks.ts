@@ -9,8 +9,8 @@ export const TASKS_DIR = fileURLToPath(new URL("../../eval/tasks/", import.meta.
 export const CATEGORIES = ["memory", "recall", "skills", "time", "web", "safety", "conversation"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
-/** Each category needs at least this many tasks and both polarities. Step 6 of the plan raises it to 5. */
-export const MIN_TASKS_PER_CATEGORY = 2;
+/** Each category needs at least this many tasks and both polarities. */
+export const MIN_TASKS_PER_CATEGORY = 5;
 
 const Strict = { additionalProperties: false } as const;
 const Category_ = Type.Union(CATEGORIES.map((category) => Type.Literal(category)));
@@ -245,6 +245,9 @@ const TaskSchema = Type.Object(
 export type CapabilityTask = Static<typeof TaskSchema>;
 export type TaskTurn = CapabilityTask["turns"][number];
 
+/** The bot reads a page of fewer characters than this as a failed read. */
+export const MIN_PAGE_CHARS = 200;
+
 export const DEFAULT_CHAT = 111;
 export const DEFAULT_USER = 7;
 export const DEFAULT_USERS = [DEFAULT_USER];
@@ -266,7 +269,11 @@ export function parseTask(json: unknown, source: string): CapabilityTask {
 function crossCheck(task: CapabilityTask): string | undefined {
 	if (!task.id.startsWith(`${task.category}-`)) return `id must start with "${task.category}-"`;
 	if (Number.isNaN(Date.parse(task.setup.clock))) return `setup.clock "${task.setup.clock}" is not a date`;
-	const chats = new Set([DEFAULT_CHAT, ...Object.keys(task.setup.chats ?? {}).map(Number)]);
+	const chats = new Set([
+		DEFAULT_CHAT,
+		...Object.keys(task.setup.chats ?? {}).map(Number),
+		...task.turns.flatMap((turn) => (turn.chat === undefined ? [] : [turn.chat])),
+	]);
 	const users = new Set(task.setup.users ?? DEFAULT_USERS);
 	for (const [index, turn] of task.turns.entries()) {
 		if (!users.has(turn.user ?? task.setup.users?.[0] ?? DEFAULT_USER))
@@ -276,6 +283,11 @@ function crossCheck(task: CapabilityTask): string | undefined {
 	for (const chat of Object.values(task.setup.chats ?? {}))
 		for (const skill of chat.skills ?? []) skills.add(skill.name);
 	for (const skill of task.reference.skills ?? []) skills.add(skill.name);
+	// The bot's page reader treats a page under 200 characters as a failed read, so a canned page must be longer.
+	for (const [url, page] of Object.entries(task.setup.web?.pages ?? {})) {
+		if (page.text.trim().length < MIN_PAGE_CHARS)
+			return `setup.web.pages["${url}"] has under ${MIN_PAGE_CHARS} characters of text`;
+	}
 	for (const [index, grader] of task.graders.entries()) {
 		const where = `graders[${index}] (${grader.kind})`;
 		if ("pattern" in grader) {

@@ -1,0 +1,31 @@
+{
+	"id": "memory-no-oneoff",
+	"category": "memory",
+	"polarity": "should-not",
+	"difficulty": "easy",
+	"source": "real-failure",
+	"heldOut": false,
+	"description": "A one-off translation request ends with 'nhớ nhé'. The agent translates and saves nothing.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Dịch giúp mình câu 'Hôm nay trời đẹp quá' sang tiếng Anh, nhớ nhé."
+		}
+	],
+	"graders": [
+		{
+			"kind": "memoryUnchanged",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "weather|beautiful|nice|lovely|gorgeous",
+			"required": true
+		}
+	],
+	"reference": {
+		"reply": "The weather is so beautiful today."
+	}
+}
