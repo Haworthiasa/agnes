@@ -26,7 +26,13 @@ function turn(overrides: Partial<LiveTurn> = {}): LiveTurn {
 	};
 }
 
-const run = (turns: LiveTurn[], journeyId = "j1-new-user"): LiveRun => ({ journeyId, salt: "s", turns, memory: {} });
+const run = (turns: LiveTurn[], journeyId = "j1-new-user"): LiveRun => ({
+	journeyId,
+	salt: "s",
+	turns,
+	memory: {},
+	skills: {},
+});
 const meta = (repeats: number) => ({
 	sha: "x",
 	dirty: false,

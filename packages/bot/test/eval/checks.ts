@@ -107,8 +107,30 @@ export const CHECKS: Check[] = [
 			),
 	},
 	{
+		name: "j8: a skill saved in one session is listed in the prompt of the next",
+		run: (results) => assert.match(journey(results, "j8-skill-routine").sessionPrompts[1] ?? "", /- daily-brief: /),
+	},
+	{
+		name: "j8: a correction patches the skill",
+		run: (results) => {
+			const body = journey(results, "j8-skill-routine").skills["111"]?.[0]?.body ?? "";
+			assert.match(body, /một ngày tốt lành/);
+			assert.doesNotMatch(body, /Chúc bạn ngày mới/);
+		},
+	},
+	{
+		name: "j8: the scheduled run reads the skill",
+		run: (results) => {
+			const tick = journey(results, "j8-skill-routine").turns.find((turn) => turn.kind === "tick");
+			assert.ok(tick?.toolCalls.includes("skill_view"), "the due job did not call skill_view");
+		},
+	},
+	{
+		name: "j9: a routine with an instruction override is not saved",
+		run: (results) => assert.deepEqual(journey(results, "j9-no-skill").skills["111"], []),
+	},
+	{
 		name: "skill_manage and skill_view are declared tools",
-		expectFail: "PR C",
 		run: (results) => {
 			const schemas = journey(results, "j2-returning-user").toolSchemas;
 			assert.ok("skill_manage" in schemas && "skill_view" in schemas);

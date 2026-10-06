@@ -6,6 +6,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { chatDir, createBot } from "../../src/bot.ts";
 import { type Job, JobStore } from "../../src/scheduler.ts";
+import { SkillStore } from "../../src/skills.ts";
 import { FakeTransport } from "../helpers.ts";
 import { drive } from "./drive.ts";
 import type { Journey, Step } from "./journeys.ts";
@@ -72,6 +73,8 @@ export interface LiveRun {
 	salt: string;
 	turns: LiveTurn[];
 	memory: Record<string, { user: string | null; memory: string | null }>;
+	/** The skills saved in each chat at the end. */
+	skills: Record<string, Array<{ name: string; body: string }>>;
 }
 
 interface StoredAssistant {
@@ -187,7 +190,13 @@ export async function runLiveJourney(journey: Journey, options: LiveOptions): Pr
 			const read = (name: string) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), "utf8") : null);
 			memory[String(chat)] = { user: read("USER.md"), memory: read("MEMORY.md") };
 		}
-		return { journeyId: journey.id, salt, turns, memory };
+		const skills: LiveRun["skills"] = {};
+		for (const chat of new Set(journey.steps.flatMap((step) => ("chat" in step ? [step.chat] : [])))) {
+			skills[String(chat)] = new SkillStore(join(chatDir(dataDir, chat), "skills"))
+				.list()
+				.map(({ name, body }) => ({ name, body }));
+		}
+		return { journeyId: journey.id, salt, turns, memory, skills };
 	} finally {
 		rmSync(dataDir, { recursive: true, force: true });
 	}
