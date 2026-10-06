@@ -93,6 +93,7 @@ interface StoredEntry {
 		content?: Array<{ type: string; name?: string }>;
 	};
 	role?: string;
+	isError?: boolean;
 	usage?: StoredAssistant["usage"];
 	content?: Array<{ type: string; name?: string }>;
 }
