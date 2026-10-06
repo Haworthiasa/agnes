@@ -35,5 +35,29 @@
 	"reference": {
 		"jobDueInMinutes": 45,
 		"reply": "Ok, 45 phút nữa (08:45) mình nhắc bạn nấu cơm."
+	},
+	"needs": [
+		{
+			"offers": "schedule"
+		},
+		{
+			"from": "tool",
+			"name": "schedule",
+			"text": "08:45"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "schedule",
+					"args": {
+						"action": "create",
+						"prompt": "Nhắc nấu cơm",
+						"in_minutes": 45
+					}
+				}
+			]
+		}
 	}
 }

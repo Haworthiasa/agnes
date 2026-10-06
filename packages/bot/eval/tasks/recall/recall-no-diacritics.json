@@ -42,5 +42,27 @@
 	],
 	"reference": {
 		"reply": "Con mèo của bạn tên là Kiwi."
+	},
+	"needs": [
+		{
+			"offers": "session_search"
+		},
+		{
+			"from": "tool",
+			"name": "session_search",
+			"text": "Kiwi"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "session_search",
+					"args": {
+						"query": "meo"
+					}
+				}
+			]
+		}
 	}
 }

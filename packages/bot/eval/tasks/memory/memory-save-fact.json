@@ -32,5 +32,28 @@
 			]
 		},
 		"reply": "Đã nhớ: bạn dị ứng tôm."
+	},
+	"needs": [
+		{
+			"offers": "memory"
+		},
+		{
+			"from": "prompt",
+			"text": "Save when asked to remember"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "memory",
+					"args": {
+						"target": "user",
+						"action": "add",
+						"content": "Dị ứng tôm"
+					}
+				}
+			]
+		}
 	}
 }

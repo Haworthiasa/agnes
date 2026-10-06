@@ -46,5 +46,14 @@
 	],
 	"reference": {
 		"reply": "Bạn thích cà phê đen không đường."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "cà phê đen không đường"
+		}
+	],
+	"oracle": {
+		"2": {}
 	}
 }

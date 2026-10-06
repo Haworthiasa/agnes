@@ -50,5 +50,29 @@
 			]
 		},
 		"reply": "Đã cập nhật: bạn chỉ uống trà."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "Thích uống cà phê"
+		},
+		{
+			"offers": "memory"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "memory",
+					"args": {
+						"target": "user",
+						"action": "replace",
+						"old_text": "cà phê",
+						"content": "Chỉ uống trà, đã bỏ cà phê"
+					}
+				}
+			]
+		}
 	}
 }

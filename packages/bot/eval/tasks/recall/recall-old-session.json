@@ -52,5 +52,31 @@
 	],
 	"reference": {
 		"reply": "Bạn kể sắp chạy giải bán marathon ở Đà Nẵng, ngày 14/12."
+	},
+	"needs": [
+		{
+			"offers": "session_search"
+		},
+		{
+			"from": "tool",
+			"name": "session_search",
+			"text": "Đà Nẵng"
+		},
+		{
+			"from": "prompt",
+			"text": "Use session_search only when"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "session_search",
+					"args": {
+						"query": "marathon"
+					}
+				}
+			]
+		}
 	}
 }

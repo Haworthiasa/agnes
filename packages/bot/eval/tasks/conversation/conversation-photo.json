@@ -30,5 +30,13 @@
 	],
 	"reference": {
 		"reply": "Ảnh có một hình tròn màu vàng giống mặt trời trên nền trời xanh, phía dưới là cỏ xanh."
+	},
+	"needs": [
+		{
+			"image": true
+		}
+	],
+	"oracle": {
+		"0": {}
 	}
 }

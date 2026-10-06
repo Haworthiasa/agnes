@@ -37,5 +37,30 @@
 				"body": "Khi user gửi tên một bộ phim, trả lời đúng 3 gạch đầu dòng:\n- thể loại\n- năm ra mắt\n- một câu giới thiệu"
 			}
 		]
+	},
+	"needs": [
+		{
+			"offers": "skill_manage"
+		},
+		{
+			"from": "prompt",
+			"text": "when asked to save a routine"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "skill_manage",
+					"args": {
+						"action": "create",
+						"name": "phim-3-gach",
+						"description": "Trả lời tên phim bằng 3 gạch đầu dòng",
+						"body": "Khi user gửi tên một bộ phim, trả lời đúng 3 gạch đầu dòng:\n- thể loại\n- năm ra mắt\n- một câu giới thiệu"
+					}
+				}
+			],
+			"reply": "Đã lưu quy trình."
+		}
 	}
 }

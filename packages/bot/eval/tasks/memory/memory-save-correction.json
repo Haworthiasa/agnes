@@ -44,5 +44,30 @@
 			]
 		},
 		"reply": "Đã sửa: tên bạn là Linh."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "Tên là Lan"
+		},
+		{
+			"from": "prompt",
+			"text": "Save when asked to remember or when corrected"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "memory",
+					"args": {
+						"target": "user",
+						"action": "replace",
+						"old_text": "Lan",
+						"content": "Tên là Linh"
+					}
+				}
+			]
+		}
 	}
 }

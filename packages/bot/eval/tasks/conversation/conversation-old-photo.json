@@ -43,5 +43,19 @@
 	],
 	"reference": {
 		"reply": "Mình không còn nhìn thấy ảnh đó nữa nên không biết món gì. Bạn gửi lại ảnh giúp mình nhé."
+	},
+	"needs": [
+		{
+			"from": "history",
+			"text": "no longer attached"
+		}
+	],
+	"oracle": {
+		"3": {}
+	},
+	"foil": {
+		"3": {
+			"reply": "Trong ảnh có cơm gà và canh rau."
+		}
 	}
 }

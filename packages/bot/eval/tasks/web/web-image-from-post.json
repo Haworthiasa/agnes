@@ -37,5 +37,32 @@
 	],
 	"reference": {
 		"reply": "Bài nói về quán bún chả ở Hà Nội.\n[photo] Bún chả"
+	},
+	"needs": [
+		{
+			"from": "tool",
+			"name": "web_fetch",
+			"text": "Image: https://example.org/img/bun-cha.png"
+		},
+		{
+			"from": "prompt",
+			"text": "show its main picture"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_fetch",
+					"args": {
+						"urls": [
+							"https://example.org/blog/bun-cha"
+						],
+						"objective": "main picture"
+					}
+				}
+			],
+			"reply": "Bài nói về quán bún chả.\n![Bún chả](https://example.org/img/bun-cha.png)"
+		}
 	}
 }

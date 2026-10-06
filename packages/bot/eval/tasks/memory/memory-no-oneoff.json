@@ -27,5 +27,28 @@
 	],
 	"reference": {
 		"reply": "The weather is so beautiful today."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "Never save one-off tasks"
+		}
+	],
+	"oracle": {
+		"0": {}
+	},
+	"foil": {
+		"0": {
+			"calls": [
+				{
+					"name": "memory",
+					"args": {
+						"target": "user",
+						"action": "add",
+						"content": "Câu 'Hôm nay trời đẹp quá' dịch là 'The weather is so beautiful today'"
+					}
+				}
+			]
+		}
 	}
 }

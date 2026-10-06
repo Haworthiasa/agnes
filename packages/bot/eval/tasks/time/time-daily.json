@@ -24,5 +24,28 @@
 	"reference": {
 		"jobDaily": "07:00",
 		"reply": "Ok, mỗi ngày 07:00 mình nhắc bạn uống vitamin."
+	},
+	"needs": [
+		{
+			"offers": "schedule"
+		},
+		{
+			"from": "prompt",
+			"text": "daily briefs"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "schedule",
+					"args": {
+						"action": "create",
+						"prompt": "Nhắc uống vitamin",
+						"daily_at": "07:00"
+					}
+				}
+			]
+		}
 	}
 }

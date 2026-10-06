@@ -33,5 +33,31 @@
 	],
 	"reference": {
 		"reply": "Bạn nói sẽ đi công tác ở Huế."
+	},
+	"needs": [
+		{
+			"from": "history",
+			"text": "Huế"
+		},
+		{
+			"from": "prompt",
+			"text": "Use session_search only when"
+		}
+	],
+	"oracle": {
+		"1": {}
+	},
+	"foil": {
+		"1": {
+			"calls": [
+				{
+					"name": "session_search",
+					"args": {
+						"query": "Huế"
+					}
+				}
+			],
+			"reply": "Bạn nói sẽ đi công tác ở Huế."
+		}
 	}
 }

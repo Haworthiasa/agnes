@@ -28,5 +28,28 @@
 	"reference": {
 		"jobDueInMinutes": 10,
 		"reply": "Ok, 10 phút nữa mình nhắc bạn gọi điện cho mẹ."
+	},
+	"needs": [
+		{
+			"offers": "schedule"
+		},
+		{
+			"from": "prompt",
+			"text": "Use in_minutes"
+		}
+	],
+	"oracle": {
+		"1": {
+			"calls": [
+				{
+					"name": "schedule",
+					"args": {
+						"action": "create",
+						"prompt": "Nhắc gọi điện cho mẹ",
+						"in_minutes": 10
+					}
+				}
+			]
+		}
 	}
 }

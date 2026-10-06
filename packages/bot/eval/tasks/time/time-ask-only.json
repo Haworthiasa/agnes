@@ -28,5 +28,29 @@
 	],
 	"reference": {
 		"reply": "Bây giờ là 14:35."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "6 October 2026 at 14:35"
+		}
+	],
+	"oracle": {
+		"0": {}
+	},
+	"foil": {
+		"0": {
+			"calls": [
+				{
+					"name": "schedule",
+					"args": {
+						"action": "create",
+						"prompt": "Báo giờ",
+						"in_minutes": 5
+					}
+				}
+			],
+			"reply": "Bây giờ là 14:35."
+		}
 	}
 }

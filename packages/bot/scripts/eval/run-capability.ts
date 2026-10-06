@@ -87,6 +87,11 @@ function resolveModel(name: string): Model<Api> {
 const agentModel = resolveModel(flags["agent-model"] as string);
 const graderModel = resolveModel(flags["grader-model"] as string);
 const price = priceOf(agentModel);
+// A model that cannot read images makes the bot refuse the turn. That is a setup error, not a failed task.
+const needImage = tasks.filter((task) => task.turns.some((turn) => "image" in turn && turn.image));
+if (needImage.length > 0 && !agentModel.input.includes("image")) {
+	throw new Error(`${price.model} cannot read images. Drop these tasks (--task) or pick another model: ${needImage.map((task) => task.id).join(", ")}`);
+}
 const series: Series = {
 	agentModel: price.model,
 	graderModel: priceOf(graderModel).model,

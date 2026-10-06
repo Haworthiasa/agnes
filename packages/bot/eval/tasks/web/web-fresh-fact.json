@@ -46,5 +46,44 @@
 	],
 	"reference": {
 		"reply": "Node.js 26.10.0 (Current). Nguồn: https://nodejs.org/en/blog/release/v26.10.0"
+	},
+	"needs": [
+		{
+			"offers": "web_search"
+		},
+		{
+			"from": "tool",
+			"name": "web_search",
+			"text": "26.10.0"
+		},
+		{
+			"from": "tool",
+			"name": "web_fetch",
+			"text": "26.10.0"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_search",
+					"args": {
+						"objective": "Find the newest Node.js Current release",
+						"queries": [
+							"Node.js latest current release"
+						]
+					}
+				},
+				{
+					"name": "web_fetch",
+					"args": {
+						"urls": [
+							"https://nodejs.org/en/blog/release/v26.10.0"
+						],
+						"objective": "version number"
+					}
+				}
+			]
+		}
 	}
 }

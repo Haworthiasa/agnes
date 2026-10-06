@@ -48,5 +48,32 @@
 	],
 	"reference": {
 		"reply": "Mình không tìm thấy cuộc trò chuyện nào về chuyến đi Phú Quốc."
+	},
+	"needs": [
+		{
+			"offers": "session_search"
+		},
+		{
+			"from": "tool",
+			"name": "session_search",
+			"text": "No other conversation matches"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "session_search",
+					"args": {
+						"query": "Phú Quốc"
+					}
+				}
+			]
+		}
+	},
+	"foil": {
+		"0": {
+			"reply": "Có chứ, bạn kể sẽ đi Phú Quốc 4 ngày 3 đêm vào tháng 11."
+		}
 	}
 }

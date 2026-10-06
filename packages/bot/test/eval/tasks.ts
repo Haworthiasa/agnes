@@ -103,6 +103,35 @@ const MemorySeed = Type.Object(
 );
 const SkillSeed = Type.Object({ name: Type.String(), description: Type.String(), body: Type.String() }, Strict);
 
+/** One tool call of a scripted agent. */
+const Call = Type.Object({ name: Type.String(), args: Type.Record(Type.String(), Type.Unknown()) }, Strict);
+/** A scripted agent: for each text turn (by index in `turns`), the tool calls it makes in order, then its reply. */
+const Script = Type.Record(
+	Type.String({ pattern: "^\\d+$" }),
+	Type.Object({ calls: Type.Optional(Type.Array(Call)), reply: Type.Optional(Type.String()) }, Strict),
+);
+export type Script = Static<typeof Script>;
+
+/**
+ * What the environment must give a competent agent, checked on the last model request of an oracle run:
+ * `prompt` text in the frozen system prompt; `history` text in an earlier message of the context (not the newest user
+ * message); `latest` text in the newest user message; `tool` text in a result of that tool; `offers` a tool in the
+ * request; `image` an image in the newest user message.
+ */
+const Need = Type.Union([
+	Type.Object(
+		{
+			from: Type.Union([Type.Literal("prompt"), Type.Literal("history"), Type.Literal("latest")]),
+			text: Type.String({ minLength: 1 }),
+		},
+		Strict,
+	),
+	Type.Object({ from: Type.Literal("tool"), name: Type.String(), text: Type.String({ minLength: 1 }) }, Strict),
+	Type.Object({ offers: Type.String() }, Strict),
+	Type.Object({ image: Type.Literal(true) }, Strict),
+]);
+export type Need = Static<typeof Need>;
+
 const TaskSchema = Type.Object(
 	{
 		id: Type.String({ pattern: "^[a-z]+-[a-z0-9-]+$" }),
@@ -139,6 +168,8 @@ const TaskSchema = Type.Object(
 										Type.Object(
 											{
 												daysAgo: Type.Number({ minimum: 0 }),
+												/** Part of the current session: the agent has it in context. Default: a past session. */
+												live: Type.Optional(Type.Boolean()),
 												messages: Type.Array(
 													Type.Object(
 														{
@@ -222,6 +253,16 @@ const TaskSchema = Type.Object(
 			{ minItems: 1 },
 		),
 		graders: Type.Array(Grader, { minItems: 1 }),
+		/** What the agent must be able to see and use to do the task. The solvability test checks each one. */
+		needs: Type.Array(Need, { minItems: 1 }),
+		/** An agent that does the task right. Its run must satisfy `needs` and pass the graders. */
+		oracle: Script,
+		/**
+		 * An agent that does the forbidden thing. Its run must fail the graders, or the task cannot tell right from
+		 * wrong. Required for a should-not task, unless the suite is `regression` (the bot itself prevents it).
+		 * A should task without a foil is tested against an agent that only says "Ok.".
+		 */
+		foil: Type.Optional(Script),
 		/** The state and reply of a perfect run. The state graders must pass on it. */
 		reference: Type.Object(
 			{
@@ -283,6 +324,18 @@ function crossCheck(task: CapabilityTask): string | undefined {
 	for (const chat of Object.values(task.setup.chats ?? {}))
 		for (const skill of chat.skills ?? []) skills.add(skill.name);
 	for (const skill of task.reference.skills ?? []) skills.add(skill.name);
+	const textTurns = new Set(task.turns.flatMap((turn, index) => ("text" in turn ? [String(index)] : [])));
+	for (const [name, script] of [
+		["oracle", task.oracle],
+		["foil", task.foil ?? {}],
+	] as const) {
+		for (const key of Object.keys(script)) {
+			if (!textTurns.has(key)) return `${name}["${key}"] is not a text turn of the task`;
+		}
+	}
+	if (task.polarity === "should-not" && task.suite !== "regression" && !task.foil) {
+		return "a should-not task needs a foil, unless its suite is regression";
+	}
 	// The bot's page reader treats a page under 200 characters as a failed read, so a canned page must be longer.
 	for (const [url, page] of Object.entries(task.setup.web?.pages ?? {})) {
 		if (page.text.trim().length < MIN_PAGE_CHARS)

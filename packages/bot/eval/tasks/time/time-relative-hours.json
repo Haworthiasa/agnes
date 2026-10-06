@@ -24,5 +24,28 @@
 	"reference": {
 		"jobDueInMinutes": 150,
 		"reply": "Ok, 2 tiếng rưỡi nữa mình nhắc bạn nộp báo cáo."
+	},
+	"needs": [
+		{
+			"offers": "schedule"
+		},
+		{
+			"from": "prompt",
+			"text": "Use in_minutes"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "schedule",
+					"args": {
+						"action": "create",
+						"prompt": "Nhắc nộp báo cáo",
+						"in_minutes": 150
+					}
+				}
+			]
+		}
 	}
 }

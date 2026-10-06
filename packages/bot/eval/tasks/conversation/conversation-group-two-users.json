@@ -44,5 +44,18 @@
 	],
 	"reference": {
 		"reply": "Hà ăn chay nên thử đậu hũ sốt cà chua và canh rau."
+	},
+	"needs": [
+		{
+			"from": "history",
+			"text": "ăn chay trường"
+		},
+		{
+			"from": "latest",
+			"text": "Hà đây"
+		}
+	],
+	"oracle": {
+		"2": {}
 	}
 }

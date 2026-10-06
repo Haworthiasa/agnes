@@ -29,5 +29,28 @@
 			]
 		},
 		"reply": "Đã ghi nhớ."
+	},
+	"needs": [
+		{
+			"offers": "memory"
+		},
+		{
+			"from": "prompt",
+			"text": "Save when asked to remember"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "memory",
+					"args": {
+						"target": "memory",
+						"action": "add",
+						"content": "Token API của dự án lưu trong biến môi trường API_TOKEN, không ghi vào code"
+					}
+				}
+			]
+		}
 	}
 }

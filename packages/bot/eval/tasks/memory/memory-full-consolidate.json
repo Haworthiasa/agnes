@@ -62,5 +62,37 @@
 			]
 		},
 		"reply": "Đã nhớ: bạn làm ở ABC Logistics."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "(1374/1400 chars)"
+		},
+		{
+			"from": "prompt",
+			"text": "make one call that removes or shortens old entries"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "memory",
+					"args": {
+						"target": "user",
+						"operations": [
+							{
+								"action": "remove",
+								"old_text": "Chồng tên là Quân"
+							},
+							{
+								"action": "add",
+								"content": "Làm ở công ty ABC Logistics"
+							}
+						]
+					}
+				}
+			]
+		}
 	}
 }

@@ -40,5 +40,28 @@
 	],
 	"reference": {
 		"reply": "- Thể loại: khoa học viễn tưởng\n- Năm ra mắt: 2010\n- Một nhóm trộm ý tưởng đi vào giấc mơ để cấy một ý nghĩ."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "phim-3-gach"
+		},
+		{
+			"from": "tool",
+			"name": "skill_view",
+			"text": "3 gạch đầu dòng"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "skill_view",
+					"args": {
+						"name": "phim-3-gach"
+					}
+				}
+			]
+		}
 	}
 }

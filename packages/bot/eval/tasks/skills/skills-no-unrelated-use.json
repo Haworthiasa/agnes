@@ -45,5 +45,19 @@
 	],
 	"reference": {
 		"reply": "Thủ đô của Nhật Bản là Tokyo."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "daily-brief"
+		}
+	],
+	"oracle": {
+		"0": {}
+	},
+	"foil": {
+		"0": {
+			"reply": "• Thời tiết hôm nay: nắng\n• Lịch trong ngày: trống\nChúc bạn ngày mới."
+		}
 	}
 }

@@ -20,9 +20,23 @@
 			"pattern": "\\|\\s*:?-{3,}",
 			"negate": true,
 			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "(?=[\\s\\S]*giá)(?=[\\s\\S]*camera)(?=[\\s\\S]*pin)",
+			"required": true
 		}
 	],
 	"reference": {
 		"reply": "Giá: iPhone thường cao hơn, Android có nhiều mức. Camera: cả hai đều tốt. Pin: Android thường lớn hơn."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "plain text, not Markdown tables"
+		}
+	],
+	"oracle": {
+		"0": {}
 	}
 }

@@ -17,13 +17,36 @@ export type Line = { role: "user" | "assistant" | "toolResult" | "system"; text:
 interface StoredLine {
 	type: "session" | "message";
 	id: string;
+	parentId?: string | null;
 	timestamp: string;
 	version?: number;
 	cwd?: string;
-	message?: { role: Line["role"]; content: string | Array<{ type: "text"; text: string }> };
+	message?: {
+		role: Line["role"];
+		content: string | Array<{ type: "text"; text: string }>;
+		timestamp?: number;
+		/** An assistant message carries the fields pi needs to load it into a context. */
+		api?: string;
+		provider?: string;
+		model?: string;
+		usage?: Record<string, unknown>;
+		stopReason?: string;
+	};
 }
 
-/** One stored transcript in the shape pi writes: a session header, then one entry per message. */
+const EMPTY_USAGE = {
+	input: 0,
+	output: 0,
+	cacheRead: 0,
+	cacheWrite: 0,
+	totalTokens: 0,
+	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+};
+
+/**
+ * One stored transcript in the shape pi writes: a session header, then one entry per message, each pointing at the one
+ * before it. An assistant entry has the fields pi needs to load it as context, so a session can also be continued.
+ */
 export function transcript(
 	id: string,
 	messages: Line[],
@@ -32,13 +55,19 @@ export function transcript(
 ): string {
 	const lines: StoredLine[] = [{ type: "session", version: 3, id, timestamp: new Date(startMs).toISOString(), cwd }];
 	for (const [index, message] of messages.entries()) {
+		const timestamp = startMs + index * 1000;
 		lines.push({
 			type: "message",
 			id: `e${index}`,
-			timestamp: new Date(startMs + index * 1000).toISOString(),
+			parentId: index === 0 ? null : `e${index - 1}`,
+			timestamp: new Date(timestamp).toISOString(),
 			message: {
 				role: message.role,
 				content: message.role === "user" ? message.text : [{ type: "text", text: message.text }],
+				timestamp,
+				...(message.role === "assistant"
+					? { api: "seeded", provider: "seeded", model: "seeded", usage: EMPTY_USAGE, stopReason: "stop" }
+					: {}),
 			},
 		});
 	}
@@ -121,15 +150,22 @@ function stepOf(task: CapabilityTask, turn: TaskTurn): Step {
 	return turn.kind === "tick" ? { kind: "tick", advanceMs } : { kind: "new", chat, user, advanceMs };
 }
 
+/** A chat whose newest session would be continued must start fresh, unless the task means that session to be live. */
+function hasPastSessionOnly(chat: NonNullable<CapabilityTask["setup"]["chats"]>[string]): boolean {
+	const sessions = chat.sessions ?? [];
+	return sessions.length > 0 && !sessions.some((session) => session.live);
+}
+
 /**
- * The task as a journey for `drive`. The gateway continues the most recent session of a chat, so every chat with a
- * seeded session starts with /new. Without it the seeded session would be the live one: `session_search` skips the
- * current session and the fact would already be in the context.
+ * The task as a journey for `drive`. The gateway continues the most recent session of a chat, so a chat with only
+ * past sessions starts with /new. Without it the seeded session would be the live one: `session_search` skips the
+ * current session and the fact would already be in the context. A chat with a `live` session continues it on purpose,
+ * and the agent has its messages in context.
  */
 export function taskJourney(task: CapabilityTask): TaskJourney {
 	const user = task.setup.users?.[0] ?? DEFAULT_USER;
 	const prelude: Step[] = Object.entries(task.setup.chats ?? {})
-		.filter(([, chat]) => (chat.sessions?.length ?? 0) > 0)
+		.filter(([, chat]) => hasPastSessionOnly(chat))
 		.map(([key]) => ({ kind: "new", chat: Number(key), user }));
 	return {
 		journey: {

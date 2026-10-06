@@ -48,5 +48,27 @@
 	],
 	"reference": {
 		"reply": "Bạn đang học tiếng Nhật, mục tiêu JLPT N4."
+	},
+	"needs": [
+		{
+			"offers": "session_search"
+		},
+		{
+			"from": "tool",
+			"name": "session_search",
+			"text": "tiếng Nhật"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "session_search",
+					"args": {
+						"query": "học"
+					}
+				}
+			]
+		}
 	}
 }

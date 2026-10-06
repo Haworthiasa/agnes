@@ -28,5 +28,30 @@
 	],
 	"reference": {
 		"reply": "Thủ đô của Pháp là Paris."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "Use web_search for anything that may have changed"
+		}
+	],
+	"oracle": {
+		"0": {}
+	},
+	"foil": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_search",
+					"args": {
+						"objective": "capital of France",
+						"queries": [
+							"capital France"
+						]
+					}
+				}
+			],
+			"reply": "Thủ đô của Pháp là Paris."
+		}
 	}
 }

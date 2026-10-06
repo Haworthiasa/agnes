@@ -49,5 +49,43 @@
 				"body": "1. Thời tiết hôm nay\n2. Lịch trong ngày\nKết thúc bằng câu: Chúc bạn một ngày tốt lành."
 			}
 		]
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "daily-brief"
+		},
+		{
+			"from": "tool",
+			"name": "skill_view",
+			"text": "Chúc bạn ngày mới"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "skill_view",
+					"args": {
+						"name": "daily-brief"
+					}
+				}
+			],
+			"reply": "Bản tin hôm nay: chưa có dữ liệu thời tiết hay lịch."
+		},
+		"1": {
+			"calls": [
+				{
+					"name": "skill_manage",
+					"args": {
+						"action": "patch",
+						"name": "daily-brief",
+						"old_text": "Chúc bạn ngày mới",
+						"new_text": "Chúc bạn một ngày tốt lành"
+					}
+				}
+			],
+			"reply": "Đã sửa câu kết."
+		}
 	}
 }

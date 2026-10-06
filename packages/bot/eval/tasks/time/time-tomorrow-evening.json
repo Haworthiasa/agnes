@@ -28,5 +28,32 @@
 			"dayOffset": 1
 		},
 		"reply": "Ok, 21:00 ngày mai mình nhắc bạn họp nhóm."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "6 October 2026 at 23:50"
+		},
+		{
+			"from": "prompt",
+			"text": "Asia/Ho_Chi_Minh"
+		},
+		{
+			"offers": "schedule"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "schedule",
+					"args": {
+						"action": "create",
+						"prompt": "Nhắc họp nhóm",
+						"at": "2026-10-07T21:00:00+07:00"
+					}
+				}
+			]
+		}
 	}
 }

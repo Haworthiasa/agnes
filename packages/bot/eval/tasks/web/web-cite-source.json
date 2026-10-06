@@ -1,11 +1,11 @@
 {
-	"id": "web-cite-only-seen",
+	"id": "web-cite-source",
 	"category": "web",
 	"polarity": "should",
 	"difficulty": "hard",
 	"source": "real-failure",
 	"heldOut": false,
-	"description": "The agent answers a fresh fact and cites only the URL that appeared in a tool result, none it made up.",
+	"description": "The user asks for a source. The agent answers and includes the URL of the page it read.",
 	"setup": {
 		"clock": "2026-10-06T08:00:00+07:00",
 		"web": {
@@ -41,12 +41,40 @@
 		},
 		{
 			"kind": "replyMatches",
-			"pattern": "https?://(?!(?:www\\.)?python\\.org/downloads)\\S+",
-			"negate": true,
+			"pattern": "python\\.org/downloads",
 			"required": true
 		}
 	],
 	"reference": {
 		"reply": "Python 3.14.8. Nguồn: https://www.python.org/downloads/"
+	},
+	"needs": [
+		{
+			"offers": "web_search"
+		},
+		{
+			"from": "tool",
+			"name": "web_search",
+			"text": "https://www.python.org/downloads/"
+		},
+		{
+			"from": "latest",
+			"text": "nguồn"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_search",
+					"args": {
+						"objective": "Latest stable Python release",
+						"queries": [
+							"Python latest stable release"
+						]
+					}
+				}
+			]
+		}
 	}
 }
