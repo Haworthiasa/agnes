@@ -72,6 +72,7 @@ describe("web tools inside an agent turn", () => {
 			model: runtime.faux.getModel(),
 			allowShell: false,
 			systemPrompt: () => "test",
+			timeZone: "UTC",
 			tools: () => createWebTools(backends),
 		});
 		const agent = await createAgent(1, { fresh: true });
@@ -406,6 +407,7 @@ describe("web_fetch limit", () => {
 			model: runtime.faux.getModel(),
 			allowShell: false,
 			systemPrompt: () => "test",
+			timeZone: "UTC",
 			tools: () => createWebTools([], [reader]),
 		});
 		const agent = await createAgent(1, { fresh: true });

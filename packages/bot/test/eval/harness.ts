@@ -48,6 +48,8 @@ export interface JourneyResult {
 	memory: Record<string, { user: string | null; memory: string | null }>;
 	/** First system prompt of each session, in the order sessions started. */
 	sessionPrompts: string[];
+	/** `restart` steps. A restart reopens the latest session, so it may rewrite the prompt once. */
+	restarts: number;
 	/** Names of the tools the model called. */
 	toolNames: string[];
 	/** Parameter schema (JSON) of every tool the last request declared. */
@@ -163,6 +165,7 @@ export async function runJourney(journey: Journey, options: RunOptions = {}): Pr
 			},
 			memory,
 			sessionPrompts: [...simulator.firstSystemPrompt.values()],
+			restarts: journey.steps.filter((step) => step.kind === "restart").length,
 			toolNames: [...new Set(log.toolCalls.map((call) => call.name))],
 			toolSchemas: log.toolSchemas,
 		};

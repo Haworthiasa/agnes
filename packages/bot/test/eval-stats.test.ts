@@ -66,7 +66,7 @@ const journeyTotals = (cacheHitRate: number, uncachedTokens: number) => ({
 const report = (totals: ReturnType<typeof journeyTotals>): RunReport => ({
 	meta: { sha: "x", dirty: false, tier: "t", profile: "zai", seed: null, startedAt: "", durationMs: 0 },
 	checks: [],
-	journeys: [{ id: "j", description: "", profile: "zai", turns: [], totals, memory: {}, toolNames: [] }],
+	journeys: [{ id: "j", description: "", profile: "zai", turns: [], totals, memory: {}, restarts: 0, toolNames: [] }],
 });
 
 describe("report comparison", () => {

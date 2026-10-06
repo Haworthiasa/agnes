@@ -96,6 +96,7 @@ describe("agent replies", () => {
 			model: runtime.faux.getModel(),
 			allowShell: false,
 			systemPrompt: () => "test",
+			timeZone: "UTC",
 			tools: () => createWebTools([backend]),
 		});
 		const agent = await createAgent(1, { fresh: true });

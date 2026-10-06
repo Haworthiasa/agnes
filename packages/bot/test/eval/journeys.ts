@@ -86,4 +86,27 @@ const poisonedMemory: Journey = {
 	],
 };
 
-export const JOURNEYS: Journey[] = [newUser, returningUser, groupChat, poisonedMemory];
+const LONG =
+	"Mình đang cân nhắc kế hoạch chuyến đi gồm nhiều điểm dừng, ngân sách, thời gian và người đi cùng; ".repeat(14);
+
+/** A long chat with two memory writes in the middle, where the prompt grows large. */
+const longChat: Journey = {
+	id: "j5-long-chat",
+	description: "Long chat of 14 messages with two memory writes, so a prompt change in the middle costs a lot.",
+	users: [7],
+	start: START,
+	steps: Array.from({ length: 14 }, (_, index) => ({
+		kind: "say" as const,
+		chat: 111,
+		user: 7,
+		text:
+			index === 3
+				? "Hãy nhớ: tôi thích đi biển"
+				: index === 9
+					? "Hãy nhớ: tôi không ăn hải sản"
+					: `${LONG} (ý ${index})`,
+		advanceMs: 2 * MINUTE,
+	})),
+};
+
+export const JOURNEYS: Journey[] = [newUser, returningUser, groupChat, poisonedMemory, longChat];

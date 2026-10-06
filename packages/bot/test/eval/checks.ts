@@ -60,33 +60,34 @@ export const CHECKS: Check[] = [
 		},
 	},
 	{
-		name: "no journey breaks the append-only prefix of its requests",
-		expectFail: "PR A",
+		name: "a journey breaks the append-only prefix of its requests only at a restart",
 		run: (results) => {
-			for (const result of all(results)) assert.equal(result.totals.prefixBreaks, 0, result.id);
+			for (const result of all(results)) {
+				assert.ok(
+					result.totals.prefixBreaks <= result.restarts,
+					`${result.id}: ${result.totals.prefixBreaks} breaks`,
+				);
+			}
 		},
 	},
 	{
-		name: "no turn adds a system message to a stored transcript after the first",
-		expectFail: "PR A",
+		name: "a stored transcript gets a system message only when its session starts or reopens after a restart",
 		run: (results) => {
 			for (const result of all(results)) {
-				const sessions = result.sessionPrompts.length;
+				const allowed = result.sessionPrompts.length + result.restarts;
 				assert.ok(
-					result.totals.systemMessages <= sessions,
-					`${result.id}: ${result.totals.systemMessages} > ${sessions}`,
+					result.totals.systemMessages <= allowed,
+					`${result.id}: ${result.totals.systemMessages} > ${allowed}`,
 				);
 			}
 		},
 	},
 	{
 		name: "j1: cache hit rate is at least 60%",
-		expectFail: "PR A",
 		run: (results) => assert.ok(journey(results, "j1-new-user").totals.cacheHitRate >= 0.6),
 	},
 	{
 		name: "schedule accepts a relative time, in_minutes",
-		expectFail: "PR A",
 		run: (results) => assert.match(journey(results, "j2-returning-user").toolSchemas.schedule ?? "", /in_minutes/),
 	},
 	{
