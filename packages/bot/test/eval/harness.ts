@@ -1,13 +1,12 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Bot, chatDir, createBot } from "../../src/bot.ts";
-import type { IncomingFile } from "../../src/types.ts";
+import { chatDir, createBot } from "../../src/bot.ts";
 import { createFauxRuntime, FakeTransport, type FauxRuntime } from "../helpers.ts";
 import { CacheSimulator, type ProviderProfile, ZAI_PROFILE } from "./cache-sim.ts";
+import { drive } from "./drive.ts";
 import type { Journey, Step } from "./journeys.ts";
 import { installPolicy, type PolicyLog } from "./policy.ts";
 
-const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
 const TIME_ZONE = "Asia/Ho_Chi_Minh";
 
 export interface TurnResult {
@@ -78,10 +77,6 @@ function countSystemMessages(dataDir: string): number {
 	return count;
 }
 
-function photo(): IncomingFile {
-	return { name: "photo.png", mimeType: "image/png", download: async () => PNG };
-}
-
 export interface RunOptions {
 	profile?: ProviderProfile;
 }
@@ -95,66 +90,49 @@ export async function runJourney(journey: Journey, options: RunOptions = {}): Pr
 		const log: PolicyLog = { toolCalls: [], toolSchemas: {} };
 		installPolicy(runtime.faux, simulator, () => clock.now, log);
 		const transport = new FakeTransport();
-		const start = (): Bot =>
-			createBot({
-				dataDir: runtime.dataDir,
-				modelRuntime: runtime.modelRuntime,
-				model: runtime.faux.getModel(),
-				transport,
-				allowedUserIds: new Set(journey.users),
-				allowShell: false,
-				timeZone: TIME_ZONE,
-				webBackends: { search: [], fetch: [] },
-				now: () => clock.now,
-			});
-		let bot = start();
-		const turns: TurnResult[] = [];
-		const chats = new Set<number>();
-
-		for (const [index, step] of journey.steps.entries()) {
-			clock.now += step.advanceMs ?? 0;
-			const before = {
+		const env = {
+			start: () =>
+				createBot({
+					dataDir: runtime.dataDir,
+					modelRuntime: runtime.modelRuntime,
+					model: runtime.faux.getModel(),
+					transport,
+					allowedUserIds: new Set(journey.users),
+					allowShell: false,
+					timeZone: TIME_ZONE,
+					webBackends: { search: [], fetch: [] },
+					now: () => clock.now,
+				}),
+			transport,
+			clock,
+		};
+		const turns = await drive(
+			journey,
+			env,
+			() => ({
 				calls: simulator.calls.length,
 				tools: log.toolCalls.length,
-				sent: transport.order.length,
 				system: countSystemMessages(runtime.dataDir),
-			};
-			const startedAt = performance.now();
-			if (step.kind === "say") {
-				chats.add(step.chat);
-				await bot.gateway.handle({
-					chatId: step.chat,
-					userId: step.user,
-					text: step.text,
-					...(step.image ? { file: photo() } : {}),
-				});
-			} else if (step.kind === "new") {
-				chats.add(step.chat);
-				await bot.gateway.handle({ chatId: step.chat, userId: step.user, text: "/new" });
-			} else if (step.kind === "restart") {
-				bot.gateway.dispose();
-				bot = start();
-			} else {
-				await bot.scheduler.tick();
-			}
-			const cpuMs = performance.now() - startedAt;
-			const calls = simulator.calls.slice(before.calls);
-			turns.push({
-				index,
-				kind: step.kind,
-				chat: "chat" in step ? step.chat : null,
-				user: step.kind === "say" ? step.text : step.kind,
-				reply: transport.order.slice(before.sent).join("\n"),
-				modelCalls: calls.length,
-				promptTokens: calls.reduce((sum, call) => sum + call.promptTokens, 0),
-				cachedTokens: calls.reduce((sum, call) => sum + call.cachedTokens, 0),
-				uncachedTokens: calls.reduce((sum, call) => sum + call.uncachedTokens, 0),
-				systemMessagesAdded: countSystemMessages(runtime.dataDir) - before.system,
-				toolCalls: log.toolCalls.slice(before.tools).map((call) => call.name),
-				cpuMs,
-			});
-		}
-		bot.gateway.dispose();
+			}),
+			(before, { index, step, reply, wallMs }): TurnResult => {
+				const calls = simulator.calls.slice(before.calls);
+				return {
+					index,
+					kind: step.kind,
+					chat: "chat" in step ? step.chat : null,
+					user: step.kind === "say" ? step.text : step.kind,
+					reply,
+					modelCalls: calls.length,
+					promptTokens: calls.reduce((sum, call) => sum + call.promptTokens, 0),
+					cachedTokens: calls.reduce((sum, call) => sum + call.cachedTokens, 0),
+					uncachedTokens: calls.reduce((sum, call) => sum + call.uncachedTokens, 0),
+					systemMessagesAdded: countSystemMessages(runtime.dataDir) - before.system,
+					toolCalls: log.toolCalls.slice(before.tools).map((call) => call.name),
+					cpuMs: wallMs,
+				};
+			},
+		);
+		const chats = new Set(journey.steps.flatMap((step) => ("chat" in step ? [step.chat] : [])));
 
 		const sum = (pick: (turn: TurnResult) => number) => turns.reduce((total, turn) => total + pick(turn), 0);
 		const promptTokens = sum((turn) => turn.promptTokens);
