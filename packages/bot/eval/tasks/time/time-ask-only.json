@@ -1,0 +1,32 @@
+{
+	"id": "time-ask-only",
+	"category": "time",
+	"polarity": "should-not",
+	"difficulty": "easy",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "The user only asks the time. The agent answers from the clock and creates no job.",
+	"setup": {
+		"clock": "2026-10-06T14:35:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Mấy giờ rồi?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "toolNotCalled",
+			"name": "schedule",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "14[:h ]?\\s?35|2[:h ]\\s?35|14 giờ 35|2 giờ 35",
+			"required": true
+		}
+	],
+	"reference": {
+		"reply": "Bây giờ là 14:35."
+	}
+}

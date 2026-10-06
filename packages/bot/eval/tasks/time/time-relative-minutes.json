@@ -1,0 +1,32 @@
+{
+	"id": "time-relative-minutes",
+	"category": "time",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "real-failure",
+	"heldOut": false,
+	"description": "After a 25-minute pause the user asks for a reminder in 10 minutes. The job is due 10 minutes after that message.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Chào bạn"
+		},
+		{
+			"text": "Nhắc mình sau 10 phút gọi điện cho mẹ",
+			"advanceMs": 1500000
+		}
+	],
+	"graders": [
+		{
+			"kind": "jobDue",
+			"inMinutes": 10,
+			"required": true
+		}
+	],
+	"reference": {
+		"jobDueInMinutes": 10,
+		"reply": "Ok, 10 phút nữa mình nhắc bạn gọi điện cho mẹ."
+	}
+}

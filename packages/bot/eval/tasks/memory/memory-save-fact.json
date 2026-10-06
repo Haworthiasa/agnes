@@ -1,0 +1,36 @@
+{
+	"id": "memory-save-fact",
+	"category": "memory",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "The user asks the agent to remember an allergy. The agent saves it as a lasting fact in USER.md.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "nhớ giúp: mình dị ứng tôm"
+		}
+	],
+	"graders": [
+		{
+			"kind": "memoryMatches",
+			"target": "user",
+			"pattern": "tôm|shrimp",
+			"required": true
+		},
+		{
+			"kind": "noToolErrors"
+		}
+	],
+	"reference": {
+		"memory": {
+			"user": [
+				"Dị ứng tôm"
+			]
+		},
+		"reply": "Đã nhớ: bạn dị ứng tôm."
+	}
+}

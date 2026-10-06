@@ -1,0 +1,37 @@
+{
+	"id": "recall-in-context",
+	"category": "recall",
+	"polarity": "should-not",
+	"difficulty": "easy",
+	"source": "real-failure",
+	"heldOut": false,
+	"description": "The user said a fact 2 turns ago in the same chat. The agent answers from the chat and does not search old sessions.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Tuần sau mình đi công tác ở Huế"
+		},
+		{
+			"text": "Mình vừa nói sẽ đi công tác ở thành phố nào?",
+			"advanceMs": 60000
+		}
+	],
+	"graders": [
+		{
+			"kind": "toolNotCalled",
+			"name": "session_search",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "Huế",
+			"required": true,
+			"turn": 1
+		}
+	],
+	"reference": {
+		"reply": "Bạn nói sẽ đi công tác ở Huế."
+	}
+}

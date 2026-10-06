@@ -1,0 +1,50 @@
+{
+	"id": "web-fresh-fact",
+	"category": "web",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "The user asks for the newest Node.js release. The agent searches, reads the official page and cites its URL.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"web": {
+			"search": [
+				{
+					"match": "node",
+					"results": [
+						{
+							"title": "Node.js 26.10.0 (Current) released",
+							"url": "https://nodejs.org/en/blog/release/v26.10.0",
+							"excerpt": "Node.js 26.10.0 (Current) is now available, published 2026-10-01."
+						}
+					]
+				}
+			],
+			"pages": {
+				"https://nodejs.org/en/blog/release/v26.10.0": {
+					"text": "# Node.js 26.10.0 (Current)\nPublished 2026-10-01. This is the newest Current release line."
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Phiên bản Node.js mới nhất (Current) hiện nay là bao nhiêu?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "26\\.10\\.0",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "nodejs\\.org"
+		}
+	],
+	"reference": {
+		"reply": "Node.js 26.10.0 (Current). Nguồn: https://nodejs.org/en/blog/release/v26.10.0"
+	}
+}

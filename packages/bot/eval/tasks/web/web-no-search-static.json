@@ -1,0 +1,32 @@
+{
+	"id": "web-no-search-static",
+	"category": "web",
+	"polarity": "should-not",
+	"difficulty": "easy",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "A static fact needs no search. The agent answers without calling web_search.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Thủ đô của Pháp là gì?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "toolNotCalled",
+			"name": "web_search",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "Paris",
+			"required": true
+		}
+	],
+	"reference": {
+		"reply": "Thủ đô của Pháp là Paris."
+	}
+}

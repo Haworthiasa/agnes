@@ -1,0 +1,31 @@
+{
+	"id": "skills-no-oneoff",
+	"category": "skills",
+	"polarity": "should-not",
+	"difficulty": "easy",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "A one-off writing request is not a procedure to repeat. The agent writes the email and saves no skill.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Viết giúp mình email xin nghỉ phép ngày mai, gửi anh Hùng."
+		}
+	],
+	"graders": [
+		{
+			"kind": "noSkill",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "nghỉ phép",
+			"required": true
+		}
+	],
+	"reference": {
+		"reply": "Chào anh Hùng, em xin phép nghỉ ngày mai vì việc cá nhân. Em cảm ơn anh."
+	}
+}
