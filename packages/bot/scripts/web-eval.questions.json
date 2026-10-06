@@ -1,0 +1,219 @@
+{
+	"version": 2,
+	"groundTruthDate": "2026-10-06",
+	"groundTruthSources": {
+		"node": "https://nodejs.org/dist/index.json and https://raw.githubusercontent.com/nodejs/Release/main/schedule.json",
+		"typescript": "https://registry.npmjs.org/typescript/latest",
+		"python": "https://www.python.org/downloads/",
+		"telegram": "https://core.telegram.org/bots/api",
+		"keepAliveTimeout": "https://nodejs.org/api/http.html"
+	},
+	"questions": [
+		{
+			"id": "node-latest",
+			"kind": "fresh",
+			"question": "Phiên bản Node.js mới nhất (Current) hiện nay là bao nhiêu?",
+			"objective": "Find the newest Node.js Current release version number as of today. Prefer the official nodejs.org release list or blog.",
+			"queries": [
+				"Node.js latest current release",
+				"nodejs.org release v26"
+			],
+			"expected": "26\\.10\\.0",
+			"stale": [
+				"\\b2[0-5]\\.\\d+\\.\\d+"
+			],
+			"primaryDomains": [
+				"nodejs.org",
+				"github.com/nodejs"
+			]
+		},
+		{
+			"id": "node-lts",
+			"kind": "fresh",
+			"question": "Phiên bản Node.js LTS mới nhất hiện nay là bao nhiêu?",
+			"objective": "Find the newest Node.js LTS release version number as of today, from nodejs.org.",
+			"queries": [
+				"Node.js latest LTS version",
+				"Node.js 24 LTS Krypton release"
+			],
+			"expected": "24\\.21\\.0",
+			"stale": [
+				"\\b2[0-3]\\.\\d+\\.\\d+",
+				"\\b24\\.(1?\\d|20)\\.\\d+"
+			],
+			"primaryDomains": [
+				"nodejs.org",
+				"github.com/nodejs"
+			]
+		},
+		{
+			"id": "typescript-latest",
+			"kind": "fresh",
+			"question": "What is the latest stable TypeScript version right now?",
+			"objective": "Find the newest stable TypeScript release version as of today. Prefer the official TypeScript blog, npm registry or the microsoft/TypeScript GitHub releases.",
+			"queries": [
+				"TypeScript latest stable release",
+				"TypeScript 7.0 release"
+			],
+			"expected": "7\\.0\\.2",
+			"stale": [
+				"\\b[56]\\.\\d+\\.\\d+",
+				"\\b7\\.0\\.[01]\\b"
+			],
+			"primaryDomains": [
+				"typescriptlang.org",
+				"devblogs.microsoft.com",
+				"github.com/microsoft/typescript",
+				"npmjs.com"
+			]
+		},
+		{
+			"id": "python-latest",
+			"kind": "fresh",
+			"question": "Phiên bản Python ổn định mới nhất hiện nay là bao nhiêu?",
+			"objective": "Find the newest stable Python 3 release version as of today, from python.org.",
+			"queries": [
+				"Python latest stable release",
+				"python.org downloads 3.14"
+			],
+			"expected": "3\\.14\\.8",
+			"stale": [
+				"\\b3\\.1[0-3]\\.\\d+",
+				"\\b3\\.14\\.[0-7]\\b"
+			],
+			"primaryDomains": [
+				"python.org"
+			]
+		},
+		{
+			"id": "node20-eol",
+			"kind": "deep",
+			"question": "Node.js 20 hết hỗ trợ (end-of-life) vào ngày nào?",
+			"objective": "Find the official end-of-life date of Node.js 20 (Iron) from the Node.js release schedule.",
+			"queries": [
+				"Node.js 20 end of life date",
+				"Node.js release schedule Iron EOL"
+			],
+			"expected": "2026-04-30|30/0?4/2026|April 30,? 2026|30 April 2026|30 tháng 4,? (năm )?2026|30-0?4-2026",
+			"primaryDomains": [
+				"nodejs.org",
+				"github.com/nodejs"
+			],
+			"fetchUrl": "https://github.com/nodejs/release"
+		},
+		{
+			"id": "node22-codename",
+			"kind": "deep",
+			"question": "Codename của Node.js 22 LTS là gì?",
+			"objective": "Find the LTS codename of Node.js 22 from nodejs.org.",
+			"queries": [
+				"Node.js 22 LTS codename"
+			],
+			"expected": "\\bJod\\b",
+			"primaryDomains": [
+				"nodejs.org",
+				"github.com/nodejs"
+			],
+			"fetchUrl": "https://nodejs.org/en/about/previous-releases"
+		},
+		{
+			"id": "telegram-msg-limit",
+			"kind": "deep",
+			"question": "Telegram Bot API sendMessage cho phép tối đa bao nhiêu ký tự mỗi tin nhắn?",
+			"objective": "Find the maximum text length of sendMessage in the official Telegram Bot API documentation.",
+			"queries": [
+				"Telegram Bot API sendMessage text length limit"
+			],
+			"expected": "4096",
+			"primaryDomains": [
+				"core.telegram.org"
+			],
+			"fetchUrl": "https://core.telegram.org/bots/api"
+		},
+		{
+			"id": "telegram-commands",
+			"kind": "fetch",
+			"question": "Theo https://core.telegram.org/bots/api, setMyCommands cho phép tối đa bao nhiêu lệnh?",
+			"objective": "Maximum number of commands accepted by setMyCommands in the Telegram Bot API.",
+			"queries": [
+				"setMyCommands maximum commands"
+			],
+			"expected": "\\b100\\b",
+			"primaryDomains": [
+				"core.telegram.org"
+			],
+			"fetchUrl": "https://core.telegram.org/bots/api"
+		},
+		{
+			"id": "node-keepalive",
+			"kind": "deep",
+			"question": "Giá trị mặc định của server.keepAliveTimeout trong module http của Node.js là bao nhiêu?",
+			"objective": "Default value of server.keepAliveTimeout in the Node.js http module documentation.",
+			"queries": [
+				"Node.js http server.keepAliveTimeout default"
+			],
+			"expected": "5000|5 ?seconds|5 giây",
+			"primaryDomains": [
+				"nodejs.org"
+			],
+			"fetchUrl": "https://nodejs.org/api/http.html"
+		},
+		{
+			"id": "node-active-lts",
+			"kind": "fetch",
+			"question": "Theo https://nodejs.org/en/about/previous-releases, phiên bản Node.js nào đang ở trạng thái Active LTS?",
+			"objective": "Which Node.js major version is in Active LTS status according to the release table.",
+			"queries": [
+				"Node.js Active LTS version"
+			],
+			"expected": "\\bv?24\\b|Krypton",
+			"primaryDomains": [
+				"nodejs.org"
+			],
+			"fetchUrl": "https://nodejs.org/en/about/previous-releases"
+		},
+		{
+			"id": "vn-land-law",
+			"kind": "vi",
+			"question": "Luật Đất đai 2024 có hiệu lực thi hành từ ngày nào?",
+			"objective": "Ngày có hiệu lực thi hành của Luật Đất đai 2024 (sau khi Quốc hội cho hiệu lực sớm). Ưu tiên nguồn chính thức: Cổng thông tin Chính phủ, Quốc hội, cơ sở dữ liệu văn bản pháp luật.",
+			"queries": [
+				"Luật Đất đai 2024 hiệu lực từ ngày",
+				"Luật Đất đai 2024 có hiệu lực sớm 1/8/2024"
+			],
+			"expected": "0?1/0?8/2024|1 tháng 8,? (năm )?2024|August 1,? 2024|01-08-2024",
+			"stale": [
+				"0?1/0?1/2025|1 tháng 1,? (năm )?2025"
+			],
+			"primaryDomains": [
+				"chinhphu.vn",
+				"baochinhphu.vn",
+				"quochoi.vn",
+				"vbpl.vn",
+				"moj.gov.vn",
+				"monre.gov.vn",
+				"mae.gov.vn"
+			]
+		},
+		{
+			"id": "vn-decree-168",
+			"kind": "vi",
+			"question": "Nghị định 168/2024/NĐ-CP về xử phạt vi phạm giao thông có hiệu lực từ ngày nào?",
+			"objective": "Ngày có hiệu lực của Nghị định 168/2024/NĐ-CP quy định xử phạt vi phạm hành chính về trật tự an toàn giao thông đường bộ. Ưu tiên nguồn chính thức.",
+			"queries": [
+				"Nghị định 168/2024/NĐ-CP hiệu lực",
+				"Nghị định 168 xử phạt giao thông có hiệu lực từ ngày"
+			],
+			"expected": "0?1/0?1/2025|1 tháng 1,? (năm )?2025|January 1,? 2025|01-01-2025",
+			"primaryDomains": [
+				"chinhphu.vn",
+				"baochinhphu.vn",
+				"vbpl.vn",
+				"moj.gov.vn",
+				"bocongan.gov.vn",
+				"csgt.vn",
+				"mt.gov.vn"
+			]
+		}
+	]
+}

@@ -1,0 +1,26 @@
+{
+	"name": "@earendil-works/pi-bot",
+	"version": "1.0.3",
+	"private": true,
+	"description": "Always-on personal agent on Telegram, built on the pi SDK",
+	"type": "module",
+	"bin": {
+		"agnes-bot": "./src/main.ts"
+	},
+	"scripts": {
+		"start": "node --import ../coding-agent/src/experimental/source-resolver.ts src/main.ts",
+		"test": "vitest --run"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	},
+	"dependencies": {
+		"@earendil-works/pi-ai": "^1.0.3",
+		"@earendil-works/pi-coding-agent": "^1.0.3",
+		"@earendil-works/pi-mcp": "^1.0.3",
+		"typebox": "1.3.27"
+	},
+	"devDependencies": {
+		"vitest": "4.1.11"
+	}
+}
