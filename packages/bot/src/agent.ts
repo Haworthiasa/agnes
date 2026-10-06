@@ -10,7 +10,7 @@ import {
 	SettingsManager,
 	type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import { dropUnverifiedUrls } from "./citations.ts";
+import { verifyReply } from "./citations.ts";
 import type { ChatAgent, ChatAgentFactory } from "./types.ts";
 
 // pi's file tools accept absolute paths, so they can reach secrets outside the workspace.
@@ -58,6 +58,25 @@ function seenText(message: { role: string; content?: unknown }): string {
 		.join("\n");
 }
 
+const EARLIER_IMAGE = "[Image from an earlier message, no longer attached]";
+
+/**
+ * Keeps images only in the newest user message. A photo stays in the transcript, but the model would receive it
+ * again on every later turn: a 1280 px photo is about 300 KB of base64 each time.
+ */
+function withoutEarlierImages<T extends { role: string; content?: unknown }>(messages: T[]): T[] {
+	const newestUser = messages.findLastIndex((message) => message.role === "user");
+	return messages.map((message, index) => {
+		if (index >= newestUser || message.role !== "user" || !Array.isArray(message.content)) return message;
+		const content = message.content as Array<{ type: string }>;
+		if (!content.some((part) => part.type === "image")) return message;
+		return {
+			...message,
+			content: content.map((part) => (part.type === "image" ? { type: "text", text: EARLIER_IMAGE } : part)),
+		};
+	});
+}
+
 function replyText(message: AssistantMessage | undefined): string {
 	if (!message) return "";
 	const text = message.content
@@ -93,15 +112,21 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 			tools: [...builtinTools, ...customTools.map((tool) => tool.name)],
 			customTools,
 		});
+		const transformContext = session.agent.transformContext;
+		session.agent.transformContext = async (messages, signal) =>
+			withoutEarlierImages(transformContext ? await transformContext(messages, signal) : messages);
 
 		const agent: ChatAgent = {
-			async prompt(text) {
+			async prompt(text, images) {
+				if (images?.length && !session.model?.input.includes("image")) {
+					throw new Error(`Model ${session.model?.id ?? "hiện tại"} không đọc được ảnh.`);
+				}
 				// Re-applying the loadout rebuilds the system prompt from the loader, picking up new memory.
 				session.setActiveToolsByName(session.getActiveToolNames());
-				await session.prompt(text, { source: "rpc" });
+				await session.prompt(text, { source: "rpc", images });
 				const last = session.messages.findLast((message) => message.role === "assistant");
 				// A URL the model did not get from a tool, the user or memory is not a source; it never reaches the user.
-				const { text: reply, dropped } = dropUnverifiedUrls(replyText(last as AssistantMessage | undefined), [
+				const { dropped, ...reply } = verifyReply(replyText(last as AssistantMessage | undefined), [
 					options.systemPrompt(chatId),
 					...session.messages.map(seenText),
 				]);

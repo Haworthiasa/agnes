@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { deliverReply } from "./media.ts";
 import type { ChatAgentFactory, ChatTransport } from "./types.ts";
 
 export type Schedule =
@@ -162,7 +163,15 @@ export class Scheduler {
 				const reply = await agent.prompt(
 					`[Scheduled task ${job.id}, ${describeSchedule(job.schedule, this.timeZone)}]\n${job.prompt}`,
 				);
-				await this.transport.send(job.chatId, `[Lịch ${job.id}]\n${reply || "(không có phản hồi)"}`);
+				const label = `[Lịch ${job.id}]`;
+				const [first, ...rest] = reply.parts;
+				const parts =
+					first === undefined
+						? [{ text: `${label}\n(không có phản hồi)` }]
+						: "text" in first
+							? [{ text: `${label}\n${first.text}` }, ...rest]
+							: [{ text: label }, ...reply.parts];
+				await deliverReply(this.transport, job.chatId, { parts });
 			} finally {
 				agent.dispose();
 			}

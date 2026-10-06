@@ -1,11 +1,11 @@
 import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createBotAgentFactory } from "../src/agent.ts";
-import { dropUnverifiedUrls } from "../src/citations.ts";
+import { verifyReply } from "../src/citations.ts";
 import { createWebTools, type WebBackend } from "../src/tools/web.ts";
 import { createFauxRuntime, type FauxRuntime } from "./helpers.ts";
 
-describe("dropUnverifiedUrls", () => {
+describe("verifyReply", () => {
 	it("keeps seen URLs despite cosmetic differences and removes unseen ones", () => {
 		const reply = [
 			"Node.js 26.10.0 là bản mới nhất.",
@@ -15,11 +15,12 @@ describe("dropUnverifiedUrls", () => {
 			"- https://made-up.example.com/node",
 			"Xem thêm [bảng phát hành](https://fake.example.org/releases).",
 		].join("\n");
-		const { text, dropped } = dropUnverifiedUrls(reply, [
+		const { parts, dropped } = verifyReply(reply, [
 			"[1] nodejs.org\nhttp://www.nodejs.org/en/blog/release/v26.10.0?utm_source=x",
 		]);
 		expect(dropped).toEqual(["https://made-up.example.com/node", "https://fake.example.org/releases"]);
-		expect(text).toBe(
+		expect(parts).toHaveLength(1);
+		expect((parts[0] as { text: string }).text).toBe(
 			[
 				"Node.js 26.10.0 là bản mới nhất.",
 				"",
@@ -32,14 +33,40 @@ describe("dropUnverifiedUrls", () => {
 
 	it("cleans the separators a removed URL leaves behind", () => {
 		expect(
-			dropUnverifiedUrls("Xem (https://a.example/x, https://b.example/y) và (https://b.example/y).", [
+			verifyReply("Xem (https://a.example/x, https://b.example/y) và (https://b.example/y).", [
 				"https://a.example/x",
-			]).text,
-		).toBe("Xem (https://a.example/x) và.");
+			]).parts,
+		).toEqual([{ text: "Xem (https://a.example/x) và." }]);
 	});
 
 	it("leaves a reply without URLs unchanged", () => {
-		expect(dropUnverifiedUrls("Không có nguồn.", [])).toEqual({ text: "Không có nguồn.", dropped: [] });
+		expect(verifyReply("Không có nguồn.", [])).toEqual({ parts: [{ text: "Không có nguồn." }], dropped: [] });
+	});
+
+	it("keeps seen images where the model placed them and drops invented ones", () => {
+		const seen = [
+			"[1] vnexpress.net\nImage: https://i.vnecdn.net/a.jpg — Cầu Rồng\nImage: https://i.vnecdn.net/b.jpg\nImage: https://i.vnecdn.net/c.jpg",
+		];
+		const reply = [
+			"Cầu Rồng ở Đà Nẵng.",
+			"",
+			"Ảnh 1 — ban ngày:",
+			"![Cầu Rồng](https://i.vnecdn.net/a.jpg)",
+			"![bịa](https://invented.example.com/x.jpg)",
+			"Ảnh 2 — ban đêm:",
+			"![thêm](https://i.vnecdn.net/b.jpg) ![quá nhiều](https://i.vnecdn.net/c.jpg)",
+			"Nguồn: vnexpress.net",
+		].join("\n");
+		expect(verifyReply(reply, seen)).toEqual({
+			parts: [
+				{ text: "Cầu Rồng ở Đà Nẵng.\n\nẢnh 1 — ban ngày:" },
+				{ image: { url: "https://i.vnecdn.net/a.jpg", alt: "Cầu Rồng" } },
+				{ text: "Ảnh 2 — ban đêm:" },
+				{ image: { url: "https://i.vnecdn.net/b.jpg", alt: "thêm" } },
+				{ text: "Nguồn: vnexpress.net" },
+			],
+			dropped: ["https://invented.example.com/x.jpg"],
+		});
 	});
 });
 
@@ -74,6 +101,8 @@ describe("agent replies", () => {
 		const agent = await createAgent(1, { fresh: true });
 		const reply = await agent.prompt("Node mới nhất?");
 		agent.dispose();
-		expect(reply).toBe("Bản mới nhất là 26.10.0 (https://nodejs.org/en/blog/release/v26.10.0).");
+		expect(reply).toEqual({
+			parts: [{ text: "Bản mới nhất là 26.10.0 (https://nodejs.org/en/blog/release/v26.10.0)." }],
+		});
 	});
 });

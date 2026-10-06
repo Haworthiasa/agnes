@@ -1,13 +1,29 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import type { ChatTransport, IncomingMessage } from "./types.ts";
+import type { ChatTransport, IncomingFile, IncomingMessage, Photo } from "./types.ts";
 
 /** Telegram rejects messages longer than this many UTF-16 code units. */
 export const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
+const TELEGRAM_MAX_CAPTION_LENGTH = 1024;
+
+interface TelegramFile {
+	file_id: string;
+	file_size?: number;
+}
+
+interface TelegramMessage {
+	chat: { id: number };
+	from?: { id: number };
+	text?: string;
+	caption?: string;
+	/** One entry per size, smallest first. */
+	photo?: TelegramFile[];
+	document?: TelegramFile & { file_name?: string; mime_type?: string };
+}
 
 interface TelegramUpdate {
 	update_id: number;
-	message?: { chat: { id: number }; from?: { id: number }; text?: string };
+	message?: TelegramMessage;
 }
 
 interface TelegramResponse<T> {
@@ -78,9 +94,10 @@ export class TelegramTransport implements ChatTransport {
 				offset = update.update_id + 1;
 				this.writeOffset(offset);
 				const message = update.message;
-				if (message?.text && message.from) {
-					yield { chatId: message.chat.id, userId: message.from.id, text: message.text };
-				}
+				if (!message?.from) continue;
+				const file = this.fileOf(message);
+				const text = message.text ?? message.caption ?? "";
+				if (text || file) yield { chatId: message.chat.id, userId: message.from.id, text, file };
 			}
 		}
 	}
@@ -92,15 +109,49 @@ export class TelegramTransport implements ChatTransport {
 		}
 	}
 
+	async sendPhoto(chatId: number, photo: Photo, caption?: string): Promise<void> {
+		const form = new FormData();
+		form.set("chat_id", String(chatId));
+		form.set("photo", new Blob([photo.data], { type: photo.mimeType }), `image.${photo.mimeType.split("/")[1]}`);
+		if (caption) form.set("caption", caption.slice(0, TELEGRAM_MAX_CAPTION_LENGTH));
+		await this.call("sendPhoto", form);
+	}
+
 	async typing(chatId: number): Promise<void> {
 		await this.call("sendChatAction", { chat_id: chatId, action: "typing" });
 	}
 
-	private async call<T>(method: string, body: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+	/** The largest photo size, or the document. Nothing is downloaded until the gateway asks. */
+	private fileOf(message: TelegramMessage): IncomingFile | undefined {
+		const photo = message.photo?.at(-1);
+		const document = message.document;
+		if (photo) return this.file(photo, "photo.jpg", "image/jpeg");
+		if (document) return this.file(document, document.file_name ?? "file", document.mime_type ?? "");
+		return undefined;
+	}
+
+	private file(file: TelegramFile, name: string, mimeType: string): IncomingFile {
+		return {
+			name,
+			mimeType,
+			size: file.file_size,
+			download: async () => {
+				const { file_path } = await this.call<{ file_path?: string }>("getFile", { file_id: file.file_id });
+				if (!file_path) throw new Error("Telegram returned no file path");
+				// The URL holds the bot token: report only the status.
+				const response = await this.fetchFn(`${this.apiBaseUrl}/file/bot${this.token}/${file_path}`);
+				if (!response.ok) throw new Error(`HTTP ${response.status}`);
+				return new Uint8Array(await response.arrayBuffer());
+			},
+		};
+	}
+
+	private async call<T>(method: string, body: Record<string, unknown> | FormData, signal?: AbortSignal): Promise<T> {
+		const form = body instanceof FormData;
 		const response = await this.fetchFn(`${this.apiBaseUrl}/bot${this.token}/${method}`, {
 			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify(body),
+			headers: form ? undefined : { "content-type": "application/json" },
+			body: form ? body : JSON.stringify(body),
 			signal,
 		});
 		const payload = (await response.json()) as TelegramResponse<T>;

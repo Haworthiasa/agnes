@@ -3,6 +3,7 @@ import { defineTool, type ExtensionToolContext, type ToolDefinition } from "@ear
 import { type CallToolResult, McpClient, StreamableHttpTransport, toLlmContent } from "@earendil-works/pi-mcp";
 import { Type } from "typebox";
 import { normalizeUrl } from "../citations.ts";
+import { publicFetch, timeoutSignal, USER_AGENT } from "../net.ts";
 
 /** Keeps one tool result from flooding the context window. Split evenly between results or pages. */
 const MAX_RESULT_CHARS = 20_000;
@@ -22,6 +23,12 @@ export interface FetchRequest {
 	maxCharsPerPage: number;
 }
 
+/** A picture on a page, so the model can show it with `![alt](url)`. */
+export interface WebImage {
+	url: string;
+	alt?: string;
+}
+
 /** One search hit, the same shape for every backend. */
 export interface WebResult {
 	url: string;
@@ -29,6 +36,7 @@ export interface WebResult {
 	/** ISO date as the backend reported it. Undefined when unknown. */
 	published?: string;
 	excerpts: string[];
+	images?: WebImage[];
 }
 
 export interface FetchedPage {
@@ -36,6 +44,7 @@ export interface FetchedPage {
 	title?: string;
 	published?: string;
 	text: string;
+	images?: WebImage[];
 	error?: string;
 }
 
@@ -50,7 +59,11 @@ export interface WebBackend {
 export interface WebBackends {
 	search: WebBackend[];
 	fetch: WebBackend[];
+	/** Reads a page's own HTML for its images, for pages whose reader returned none. */
+	images?: PageImageReader;
 }
+
+export type PageImageReader = (url: string, signal: AbortSignal) => Promise<WebImage[]>;
 
 type ToolCaller = Pick<McpClient, "callTool" | "close">;
 
@@ -188,11 +201,13 @@ export function parseExaSearch(text: string): WebResult[] {
 				.join("\n")
 				.trim();
 			const published = field("Published Date") ?? field("Published");
+			const image = field("Image");
 			return {
 				url: field("URL") ?? "",
 				title: field("Title") ?? "",
 				published: published && /\d{4}/.test(published) ? published : undefined,
 				excerpts: body ? [body] : [],
+				images: image && /^https?:\/\//.test(image) ? [{ url: image }] : undefined,
 			};
 		})
 		.filter((result) => result.url);
@@ -286,6 +301,49 @@ function pageTitle(html: string): string | undefined {
 	return title ? decodeEntities(title).replace(/\s+/g, " ").trim() : undefined;
 }
 
+const MAX_PAGE_IMAGES = 4;
+const PREVIEW_IMAGE_KEYS = new Set(["og:image", "og:image:url", "og:image:secure_url", "twitter:image"]);
+const DECORATION = /logo|icon|avatar|sprite|pixel|badge|emoji|spinner|placeholder/i;
+
+function attribute(tag: string, name: string): string | undefined {
+	const match = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "i").exec(tag);
+	const value = match?.[1] ?? match?.[2];
+	return value === undefined ? undefined : decodeEntities(value).trim();
+}
+
+/**
+ * The page's link-preview image (Open Graph, Twitter card), then the content images that have alt text and are not
+ * small or decorative. Most sites, social networks included, publish the preview image for link cards.
+ */
+export function pageImages(html: string, pageUrl: string): WebImage[] {
+	const images: WebImage[] = [];
+	const add = (src: string | undefined, alt: string | undefined) => {
+		if (!src || src.startsWith("data:")) return;
+		try {
+			const url = new URL(src, pageUrl).href;
+			if (/^https?:/.test(url) && !images.some((image) => image.url === url))
+				images.push({ url, alt: alt || undefined });
+		} catch {}
+	};
+	const metas = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag);
+	const key = (tag: string) => (attribute(tag, "property") ?? attribute(tag, "name") ?? "").toLowerCase();
+	const previewAlt = metas.find((tag) => /^(og|twitter):image:alt$/.test(key(tag)));
+	for (const tag of metas) {
+		if (PREVIEW_IMAGE_KEYS.has(key(tag)))
+			add(attribute(tag, "content"), previewAlt && attribute(previewAlt, "content"));
+	}
+	const main = /<(main|article)\b[\s\S]*<\/\1>/i.exec(html)?.[0] ?? html;
+	for (const [tag] of main.matchAll(/<img\b[^>]*>/gi)) {
+		const src = attribute(tag, "src") ?? attribute(tag, "data-src");
+		const alt = attribute(tag, "alt");
+		const width = Number(attribute(tag, "width"));
+		const height = Number(attribute(tag, "height"));
+		if (!src || !alt || /\.svg(\?|$)/i.test(src) || DECORATION.test(src) || width < 200 || height < 150) continue;
+		add(src, alt);
+	}
+	return images.slice(0, MAX_PAGE_IMAGES);
+}
+
 /** Parses DuckDuckGo's no-JavaScript results page. */
 export function parseDuckDuckGoLite(html: string): WebResult[] {
 	const links = [...html.matchAll(/<a[^>]*href="([^"]+)"[^>]*class='result-link'>([\s\S]*?)<\/a>/g)];
@@ -299,12 +357,6 @@ export function parseDuckDuckGoLite(html: string): WebResult[] {
 			excerpts: snippet ? [snippet] : [],
 		};
 	});
-}
-
-const USER_AGENT = "Mozilla/5.0 (compatible; agnes-bot)";
-
-function timeoutSignal(signal: AbortSignal | undefined, ms: number): AbortSignal {
-	return signal ? AbortSignal.any([signal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
 }
 
 /** Last-resort search: scrapes DuckDuckGo lite. */
@@ -331,7 +383,6 @@ export class DuckDuckGoBackend implements WebBackend {
 	}
 }
 
-/** Reads pages straight from their origin. Sees what a browser without JavaScript sees. */
 interface FirecrawlSearchItem {
 	url?: string;
 	title?: string;
@@ -342,7 +393,7 @@ interface FirecrawlSearchItem {
 
 interface FirecrawlScrape {
 	markdown?: string;
-	metadata?: { title?: string; publishedTime?: string; sourceURL?: string };
+	metadata?: { title?: string; publishedTime?: string; sourceURL?: string; ogImage?: string };
 }
 
 /** Firecrawl's keyless cloud tier, as Hermes Agent uses it: REST search and scrape without an Authorization header. */
@@ -380,11 +431,13 @@ export class FirecrawlBackend implements WebBackend {
 			request.urls.map(async (url) => {
 				try {
 					const data = await this.post<FirecrawlScrape>("/v2/scrape", { url, formats: ["markdown"] }, signal);
+					const ogImage = data.metadata?.ogImage;
 					return {
 						url,
 						title: data.metadata?.title,
 						published: data.metadata?.publishedTime,
 						text: data.markdown ?? "",
+						images: ogImage ? [{ url: ogImage }] : undefined,
 					};
 				} catch (error) {
 					return { url, text: "", error: (error as Error).message };
@@ -408,11 +461,12 @@ export class FirecrawlBackend implements WebBackend {
 	}
 }
 
+/** Reads pages straight from their origin. Sees what a browser without JavaScript sees. */
 export class DirectFetchBackend implements WebBackend {
 	readonly name = "direct";
 	private readonly fetchFn: typeof fetch;
 
-	constructor(fetchFn: typeof fetch = fetch) {
+	constructor(fetchFn: typeof fetch = publicFetch) {
 		this.fetchFn = fetchFn;
 	}
 
@@ -433,7 +487,7 @@ export class DirectFetchBackend implements WebBackend {
 			const type = response.headers.get("content-type") ?? "";
 			if (/html|xml/.test(type)) {
 				const html = await response.text();
-				return { url, title: pageTitle(html), text: htmlToText(html) };
+				return { url, title: pageTitle(html), text: htmlToText(html), images: pageImages(html, url) };
 			}
 			if (/^text\/|json/.test(type)) return { url, text: await response.text() };
 			return { url, text: "", error: `unsupported content type ${type.split(";")[0] || "unknown"}` };
@@ -447,10 +501,12 @@ export function createDefaultWebBackends(): WebBackends {
 	const parallel = createParallelBackend();
 	const firecrawl = new FirecrawlBackend();
 	const exa = createExaBackend();
+	const direct = new DirectFetchBackend();
 	// Exa's fetch drops tables, so it reads pages last.
 	return {
 		search: [parallel, firecrawl, exa, new DuckDuckGoBackend()],
-		fetch: [parallel, firecrawl, new DirectFetchBackend(), exa],
+		fetch: [parallel, firecrawl, direct, exa],
+		images: async (url, signal) => (await direct.fetch({ urls: [url], maxCharsPerPage: 0 }, signal))[0]?.images ?? [],
 	};
 }
 
@@ -556,6 +612,10 @@ function header(index: number, url: string, title: string | undefined, published
 	return `[${index}] ${domainOf(url)} · ${published?.slice(0, 10) || "date unknown"} · ${title || "(no title)"}\n${url}`;
 }
 
+function imageLines(images: WebImage[] | undefined): string {
+	return (images ?? []).map((image) => `\nImage: ${image.url}${image.alt ? ` (${image.alt})` : ""}`).join("");
+}
+
 export function formatSearchResults(results: WebResult[]): string {
 	const seen = new Set<string>();
 	const unique = results.filter((result) => {
@@ -569,7 +629,7 @@ export function formatSearchResults(results: WebResult[]): string {
 		.map((result, index) => {
 			const body = result.excerpts.join("\n…\n").trim();
 			const cut = body.length > perResult ? `${body.slice(0, perResult)}…` : body;
-			return `${header(index + 1, result.url, result.title, result.published)}\n${cut}`;
+			return `${header(index + 1, result.url, result.title, result.published)}${imageLines(result.images)}\n${cut}`;
 		})
 		.join("\n\n");
 }
@@ -600,9 +660,13 @@ function usable(page: FetchedPage): boolean {
 	return !page.error && page.text.trim().length >= 200;
 }
 
+/** How long web_fetch waits for page images once the text is ready. */
+const IMAGE_GRACE_MS = 3000;
+
 export function createWebTools(
 	searchBackends: WebBackend[],
 	fetchBackends: WebBackend[] = searchBackends,
+	readImages?: PageImageReader,
 ): ToolDefinition[] {
 	const webSearch = defineTool({
 		name: "web_search",
@@ -650,6 +714,12 @@ export function createWebTools(
 				);
 			}
 			const maxCharsPerPage = Math.floor(MAX_RESULT_CHARS / params.urls.length);
+			// Most readers return text only, so the page's own HTML is read for images alongside the chain.
+			const imageController = new AbortController();
+			const imageSignal = signal ? AbortSignal.any([signal, imageController.signal]) : imageController.signal;
+			const imageReads = params.urls.map((url) =>
+				(readImages?.(url, imageSignal) ?? Promise.resolve([])).catch((): WebImage[] => []),
+			);
 			const pages = new Map<string, FetchedPage & { backend?: string }>();
 			let pending = params.urls;
 			const failures: string[] = [];
@@ -674,15 +744,24 @@ export function createWebTools(
 				}
 				pending = pending.filter((url) => !pages.has(url));
 			}
-			if (pages.size === 0) throw new Error(`All web backends failed.\n${failures.join("\n")}`);
-			const text = params.urls
-				.map((url, index) => {
+			if (pages.size === 0) {
+				imageController.abort();
+				throw new Error(`All web backends failed.\n${failures.join("\n")}`);
+			}
+			const grace = new Promise<WebImage[]>((resolve) => setTimeout(() => resolve([]), IMAGE_GRACE_MS).unref());
+			const sections = await Promise.all(
+				params.urls.map(async (url, index) => {
 					const page = pages.get(url);
 					if (!page)
 						return `${header(index + 1, url, undefined, undefined)}\n(failed: no backend could read this page)`;
-					return `${header(index + 1, url, page.title, page.published)}\n${fitToObjective(page.text, maxCharsPerPage, params.objective)}`;
-				})
-				.join("\n\n");
+					const images = page.images?.length
+						? page.images
+						: await Promise.race([imageReads[index] ?? grace, grace]);
+					return `${header(index + 1, url, page.title, page.published)}${imageLines(images)}\n${fitToObjective(page.text, maxCharsPerPage, params.objective)}`;
+				}),
+			);
+			imageController.abort();
+			const text = sections.join("\n\n");
 			const backends = [...new Set([...pages.values()].map((page) => page.backend))];
 			return { content: [{ type: "text", text }], details: { backend: backends.join(","), failures } };
 		},
