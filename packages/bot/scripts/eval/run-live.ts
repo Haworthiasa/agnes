@@ -17,7 +17,6 @@ import { parseArgs } from "node:util";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import {
 	assertSameSeries,
-	fixedOverheadTokens,
 	POLICY,
 	type PrKind,
 	readLedger,
@@ -26,8 +25,8 @@ import {
 	seriesOf,
 	verdict,
 } from "../../test/eval/guardrails.ts";
-import { runJourney } from "../../test/eval/harness.ts";
-import { type Journey, JOURNEYS } from "../../test/eval/journeys.ts";
+import { JOURNEYS } from "../../test/eval/journeys.ts";
+import { measureFixedOverhead } from "../../test/eval/overhead.ts";
 import { type LiveRun, priceOf, runLiveJourney } from "../../test/eval/live.ts";
 import {
 	buildLiveReport,
@@ -104,8 +103,7 @@ const auth = await modelRuntime.checkAuth(model.provider);
 if (!auth) throw new Error(`No credentials for ${model.provider}.`);
 
 // The prompt and the tool definitions do not depend on the model, so the scripted tier measures them without a call.
-const probe = await runJourney(JOURNEYS[0] as Journey);
-const overhead = fixedOverheadTokens(probe.sessionPrompts[0] ?? "", probe.toolDefinitions);
+const overhead = await measureFixedOverhead();
 
 const startedAt = new Date();
 const runs: LiveRun[] = [];

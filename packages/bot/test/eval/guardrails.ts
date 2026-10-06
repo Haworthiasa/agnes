@@ -6,7 +6,13 @@ const EVAL_DIR = new URL("../../eval/", import.meta.url);
 export interface Policy {
 	costUnitWeights: CostWeights;
 	fixedOverhead: { perFeatureTokens: number; capOverReferenceTokens: number; referenceSha: string };
-	nim: { unaffectedCuPerTurn: number; unaffectedTime: number; regressionPassRate: number; optimizationOec: number };
+	nim: {
+		unaffectedCuPerTurn: number;
+		unaffectedTime: number;
+		regressionPassRate: number;
+		optimizationOec: number;
+		otherCategory: number;
+	};
 	optimizationGain: { cu: number; time: number; fixedOverhead: number };
 	significance: { minRuns: number; pooledSd: number; fisherP: number; bootstrapResamples: number; seed: number };
 }
@@ -107,6 +113,8 @@ export interface Comparison {
 	gain?: { delta: number; lower: number };
 	/** The OEC difference, for an optimization. Absent when the run has no capability suite. */
 	oec?: { delta: number; lower: number };
+	/** Categories a feature does not target whose mean score fell by more than the policy margin. */
+	categoryDrops?: string[];
 	/** Regression tasks whose pass rate fell with a Fisher p below the policy limit. */
 	regressionDrops: number;
 	/** Relative change of CU per turn over the journeys or tasks the change does not target: 0.127 is +12.7%. */
@@ -137,6 +145,9 @@ export function verdict(
 	const { nim, fixedOverhead } = policy;
 	if (comparison.regressionDrops > nim.regressionPassRate) {
 		worse.push(`${comparison.regressionDrops} regression task(s) dropped in pass rate`);
+	}
+	if (kind === "feature" && comparison.categoryDrops && comparison.categoryDrops.length > 0) {
+		worse.push(`score fell by more than ${nim.otherCategory} in ${comparison.categoryDrops.join(", ")}`);
 	}
 	if (comparison.unaffectedCuPerTurnChange > nim.unaffectedCuPerTurn) {
 		worse.push(
