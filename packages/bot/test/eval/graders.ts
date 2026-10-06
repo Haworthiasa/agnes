@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Api, Model } from "@earendil-works/pi-ai";
+import type { Api, Model, ThinkingLevel } from "@earendil-works/pi-ai";
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { type Job, nextRun } from "../../src/scheduler.ts";
 import { type CapabilityTask, DEFAULT_CHAT, type Grader } from "./tasks.ts";
@@ -321,30 +321,39 @@ export function loadCalibrated(path: string = CALIBRATION_PATH): Set<string> {
 	return new Set(Object.entries(status).flatMap(([dimension, entry]) => (entry.calibrated ? [dimension] : [])));
 }
 
+/**
+ * How hard the judge thinks. A judge grades one question with no human to check it, so it thinks harder than the agent.
+ * glm-5.3-flash always thinks and accepts only low, high or max; high is enough unless calibration says otherwise.
+ */
+export const JUDGE_REASONING: ThinkingLevel = "high";
+/** Thinking tokens count against this limit, so it leaves room for the JSON answer after them. */
+const JUDGE_MAX_TOKENS = 8000;
+
 export interface JudgeOptions {
 	modelRuntime: ModelRuntime;
 	model: Model<Api>;
 	cacheDir?: string;
+	reasoning?: ThinkingLevel;
 }
 
 /**
- * A judge that asks `model` through the runtime, which resolves its credentials. It asks at temperature 0 with low thinking and caches
- * each answer on disk by a hash of the model and the prompt, so a rerun on the same transcript costs nothing.
+ * A judge that asks `model` through the runtime, which resolves its credentials. It asks at temperature 0 and caches
+ * each answer on disk by a hash of the model, the reasoning level and the prompt, so a rerun on the same transcript
+ * costs nothing and an answer given at another level is never reused.
  */
 export function createJudge(options: JudgeOptions): Judge {
 	const cacheDir = options.cacheDir ?? JUDGE_CACHE_DIR;
 	const modelName = `${options.model.provider}/${options.model.id}`;
+	const reasoning = options.reasoning ?? JUDGE_REASONING;
 	return async (prompt) => {
-		const key = createHash("sha256").update(`${modelName}\n${prompt}`).digest("hex");
+		const key = createHash("sha256").update(`${modelName}\n${reasoning}\n${prompt}`).digest("hex");
 		const file = join(cacheDir, `${key}.json`);
 		if (existsSync(file))
 			return { ...(JSON.parse(readFileSync(file, "utf8")) as { text: string }), costUsd: 0, cached: true };
 		const message = await options.modelRuntime.completeSimple(
 			options.model,
 			{ messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
-			// A model that always thinks (glm-5.3-flash) rejects a request that turns thinking off, so ask for the lowest level.
-			// Thinking tokens count against maxTokens, so leave room for the answer after them.
-			{ temperature: 0, reasoning: "low", maxTokens: 4000 },
+			{ temperature: 0, reasoning, maxTokens: JUDGE_MAX_TOKENS },
 		);
 		if (message.stopReason === "error") throw new Error(message.errorMessage ?? "the model returned an error");
 		const text = message.content.map((part) => (part.type === "text" ? part.text : "")).join("");

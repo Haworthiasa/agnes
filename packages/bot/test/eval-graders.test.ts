@@ -10,6 +10,7 @@ import {
 	type GradeInput,
 	gradeDeterministic,
 	gradeTrial,
+	JUDGE_REASONING,
 	type Judge,
 	judgePrompt,
 	loadCalibrated,
@@ -335,6 +336,26 @@ describe("judge cache", () => {
 		const other = await judge("prompt B");
 		expect(calls).toBe(2);
 		expect(other.cached).toBe(false);
+	});
+
+	it("does not reuse an answer given at another reasoning level", async () => {
+		let calls = 0;
+		runtime.faux.setResponses([
+			() => {
+				calls++;
+				return fauxAssistantMessage("A");
+			},
+			() => {
+				calls++;
+				return fauxAssistantMessage("B");
+			},
+		]);
+		const base = { modelRuntime: runtime.modelRuntime, model: runtime.faux.getModel(), cacheDir };
+		const low = await createJudge({ ...base, reasoning: "low" })("same prompt");
+		const high = await createJudge({ ...base, reasoning: "high" })("same prompt");
+		expect([low.text, high.text, calls]).toEqual(["A", "B", 2]);
+		expect((await createJudge({ ...base, reasoning: "high" })("same prompt")).cached).toBe(true);
+		expect(JUDGE_REASONING).toBe("high");
 	});
 
 	it("throws on a model error and caches nothing", async () => {
