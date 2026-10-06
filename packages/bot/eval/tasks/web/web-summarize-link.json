@@ -1,0 +1,65 @@
+{
+	"id": "web-summarize-link",
+	"category": "web",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "transcript",
+	"heldOut": false,
+	"description": "The user sends a link to a post and asks for its insights. The agent reads the page and reports what is in it.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"web": {
+			"pages": {
+				"https://example.org/posts/testing-agents": {
+					"text": "Bài viết cho rằng agent viết code tốt hơn khi có vòng phản hồi 30 giây: sau mỗi lần sửa, chạy bộ test nhanh, đọc lỗi rồi tự sửa tiếp. Tác giả khuyên viết test trước, giữ test chạy dưới nửa phút và để agent tự kiểm tra kết quả của chính nó trước khi báo xong."
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "https://example.org/posts/testing-agents tổng hợp các ý chính của bài này cho mình."
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "30 giây",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "test|kiểm tra",
+			"required": true
+		}
+	],
+	"needs": [
+		{
+			"from": "latest",
+			"text": "https://example.org/posts/testing-agents"
+		},
+		{
+			"from": "tool",
+			"name": "web_fetch",
+			"text": "30 giây"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_fetch",
+					"args": {
+						"urls": [
+							"https://example.org/posts/testing-agents"
+						],
+						"objective": "main insights"
+					}
+				}
+			]
+		}
+	},
+	"reference": {
+		"reply": "Ý chính: agent viết code tốt hơn khi có vòng phản hồi 30 giây: chạy test sau mỗi lần sửa rồi tự sửa tiếp."
+	}
+}

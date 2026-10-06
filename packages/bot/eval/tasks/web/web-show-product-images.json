@@ -1,0 +1,188 @@
+{
+	"id": "web-show-product-images",
+	"category": "web",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "transcript",
+	"heldOut": false,
+	"description": "After the agent suggested two lamps, the user asks to see each one. The agent looks them up and shows at most 2 pictures.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"sessions": [
+					{
+						"daysAgo": 0.01,
+						"live": true,
+						"messages": [
+							{
+								"role": "user",
+								"text": "Tìm giúp mình đèn bàn rẻ mà tốt"
+							},
+							{
+								"role": "assistant",
+								"text": "Mình gợi ý hai món: 1) Monitor light bar Lymax L1 (khoảng 439k), 2) Đèn bàn IKEA TERTIAL (khoảng 550k)."
+							}
+						]
+					}
+				]
+			}
+		},
+		"web": {
+			"search": [
+				{
+					"match": "lymax",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				},
+				{
+					"match": "ikea",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				},
+				{
+					"match": "đèn",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				},
+				{
+					"match": "den ban",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				},
+				{
+					"match": "light bar",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				}
+			],
+			"pages": {
+				"https://shop.example.vn/lymax-l1": {
+					"text": "Monitor light bar Lymax L1. Thanh đèn gắn trên đỉnh màn hình, chiếu xuống bàn mà không phản chiếu lên màn hình. Có điều chỉnh độ sáng và nhiệt độ màu, giá khoảng 439.000đ trên các sàn thương mại điện tử, bảo hành mười hai tháng. Gói hàng gồm thanh đèn, cáp USB và hướng dẫn lắp đặt bằng tiếng Việt.",
+					"images": [
+						"https://shop.example.vn/img/lymax-l1.png"
+					]
+				},
+				"https://shop.example.vn/ikea-tertial": {
+					"text": "Đèn bàn IKEA TERTIAL. Đèn kẹp mép bàn, hai khớp xoay, thiết kế tối giản màu xám đậm, dùng bóng LED thay được. Giá khoảng 550.000đ, phù hợp bàn học và bàn làm việc nhỏ. Có thể mua tại cửa hàng IKEA hoặc đặt qua trang web chính thức, giao hàng trong ba đến năm ngày làm việc ở các thành phố lớn.",
+					"images": [
+						"https://shop.example.vn/img/ikea-tertial.png"
+					]
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Cho mình xem ảnh từng món nhé."
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "\\[photo\\]",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "(\\[photo\\][\\s\\S]*){3}",
+			"negate": true,
+			"required": true
+		}
+	],
+	"needs": [
+		{
+			"from": "history",
+			"text": "Lymax L1"
+		},
+		{
+			"from": "tool",
+			"name": "web_fetch",
+			"text": "Image: https://shop.example.vn/img/lymax-l1.png"
+		},
+		{
+			"from": "prompt",
+			"text": "at most 2 per reply"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_search",
+					"args": {
+						"objective": "Pictures of Lymax L1 and IKEA TERTIAL lamps",
+						"queries": [
+							"Lymax L1 light bar",
+							"IKEA TERTIAL đèn bàn"
+						]
+					}
+				},
+				{
+					"name": "web_fetch",
+					"args": {
+						"urls": [
+							"https://shop.example.vn/lymax-l1",
+							"https://shop.example.vn/ikea-tertial"
+						],
+						"objective": "product pictures"
+					}
+				}
+			],
+			"reply": "Đây là ảnh hai món.\n![Lymax L1](https://shop.example.vn/img/lymax-l1.png)\n![IKEA TERTIAL](https://shop.example.vn/img/ikea-tertial.png)"
+		}
+	},
+	"reference": {
+		"reply": "Đây là ảnh hai món.\n[photo] Lymax L1\n[photo] IKEA TERTIAL"
+	}
+}
