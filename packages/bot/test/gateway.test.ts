@@ -1,6 +1,12 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { fauxAssistantMessage, fauxToolCall, type TranscriptContext } from "@earendil-works/pi-ai";
+import {
+	type Api,
+	fauxAssistantMessage,
+	fauxToolCall,
+	type Model,
+	type TranscriptContext,
+} from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createBotAgentFactory } from "../src/agent.ts";
 import { Gateway, HELP_TEXT } from "../src/gateway.ts";
@@ -22,19 +28,102 @@ describe("Gateway with a real agent session", () => {
 	let runtime: FauxRuntime;
 	afterEach(() => runtime.cleanup());
 
-	function createGateway(transport: FakeTransport): Gateway {
+	function createGateway(transport: FakeTransport, model: Model<Api> = runtime.faux.getModel()): Gateway {
 		return new Gateway({
 			transport,
 			allowedUserIds: new Set([OWNER]),
 			createAgent: createBotAgentFactory({
 				dataDir: runtime.dataDir,
 				modelRuntime: runtime.modelRuntime,
-				model: runtime.faux.getModel(),
+				model,
 				allowShell: false,
 				systemPrompt: () => "You are a test bot.",
 			}),
+			fetchImage: (async (url: string | URL | Request) =>
+				String(url) === "https://cdn.example.com/bridge.png"
+					? new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "image/png" } })
+					: new Response("<html>", { headers: { "content-type": "text/html" } })) as typeof fetch,
 		});
 	}
+
+	// pi drops an image it cannot decode, so the photo must be a real one: a 1x1 PNG.
+	const PIXEL = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+	const photoFile = (downloads: string[]) => ({
+		name: "photo.png",
+		mimeType: "image/png",
+		download: async () => {
+			downloads.push("photo.png");
+			return new Uint8Array(Buffer.from(PIXEL, "base64"));
+		},
+	});
+
+	const imagesSent = (context: TranscriptContext) =>
+		context.messages.flatMap((message) =>
+			message.role === "user" && Array.isArray(message.content)
+				? message.content.filter((part) => part.type === "image")
+				: [],
+		).length;
+
+	it("shows the model a photo once, and sends back the images its reply links where it placed them", async () => {
+		runtime = await createFauxRuntime();
+		const imageCounts: number[] = [];
+		let secondTurn = "";
+		runtime.faux.setResponses([
+			(context) => {
+				imageCounts.push(imagesSent(context));
+				return fauxAssistantMessage(
+					"Đây là cầu:\n![Cầu Rồng](https://cdn.example.com/bridge.png)\nCòn đây là trang:\n![trang](https://cdn.example.com/page)",
+				);
+			},
+			(context) => {
+				imageCounts.push(imagesSent(context));
+				secondTurn = userTexts(context).join("|");
+				return fauxAssistantMessage("ok");
+			},
+		]);
+		const transport = new FakeTransport();
+		const gateway = createGateway(transport);
+
+		await gateway.handle({
+			chatId: 1,
+			userId: OWNER,
+			text: "giống ảnh này không? https://cdn.example.com/bridge.png https://cdn.example.com/page",
+			file: photoFile([]),
+		});
+		await gateway.handle({ chatId: 1, userId: OWNER, text: "còn gì nữa?" });
+		gateway.dispose();
+
+		// The page URL serves HTML, so that image is skipped and the text after it still arrives.
+		expect(transport.order).toEqual(["Đây là cầu:", "[photo] Cầu Rồng", "Còn đây là trang:", "ok"]);
+		expect(transport.photos.map(({ photo }) => [photo.mimeType, photo.data.length])).toEqual([["image/png", 3]]);
+		// The second turn sees a note where the earlier photo was.
+		expect(imageCounts).toEqual([1, 0]);
+		expect(secondTurn).toContain("[Image from an earlier message, no longer attached]");
+	});
+
+	it("does not download files from unauthorized users", async () => {
+		runtime = await createFauxRuntime();
+		const downloads: string[] = [];
+		const gateway = createGateway(new FakeTransport());
+
+		await gateway.handle({ chatId: 1, userId: 999, text: "", file: photoFile(downloads) });
+		gateway.dispose();
+
+		expect(downloads).toEqual([]);
+	});
+
+	it("tells the user when the model cannot read images", async () => {
+		runtime = await createFauxRuntime();
+		const transport = new FakeTransport();
+		const textOnly = { ...runtime.faux.getModel(), input: ["text" as const] };
+		const gateway = createGateway(transport, textOnly);
+
+		await gateway.handle({ chatId: 1, userId: OWNER, text: "", file: photoFile([]) });
+		gateway.dispose();
+
+		expect(transport.sent).toEqual([{ chatId: 1, text: `Lỗi: Model ${textOnly.id} không đọc được ảnh.` }]);
+		expect(runtime.faux.state.callCount).toBe(0);
+	});
 
 	it("replies to the owner and ignores everyone else", async () => {
 		runtime = await createFauxRuntime();
@@ -136,7 +225,7 @@ describe("Gateway session creation", () => {
 			createAgent: async () => {
 				attempts++;
 				if (attempts <= 2) throw new Error("auth expired");
-				return { prompt: async (text) => `echo ${text}`, dispose: () => {} };
+				return { prompt: async (text) => ({ parts: [{ text: `echo ${text}` }] }), dispose: () => {} };
 			},
 		});
 

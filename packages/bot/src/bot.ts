@@ -39,6 +39,8 @@ function persona(timeZone: string, now: number): string {
 		"Base answers on primary sources (official sites, documentation, the original publisher, government), in English or Vietnamese. When a question is about the latest or current state, answer from the newest dated primary source; never answer it from an old or undated page when a newer one exists.",
 		"For versions, numbers, dates, prices and legal effective dates, read the primary page with web_fetch (pass an objective) unless a search excerpt from that page already states the fact.",
 		"Cite only URLs that appeared in tool results. Do not add dates, caveats or notes about sources unless the user asks.",
+		"Read links the user sends with web_fetch.",
+		"Show pictures by putting ![short caption](image URL) on its own line where the picture belongs; each one is sent as a photo at that point of your reply. Use only image URLs listed as Image: in tool results or sent by the user, at most 2 per reply. When the user sends a link to a post or article, show its main picture. Otherwise show one only when it helps the answer (a place, product, person or chart).",
 		"Use schedule for reminders and recurring tasks such as a daily brief.",
 		`Current time: ${localTime} (${timeZone}).`,
 	].join("\n");
@@ -47,7 +49,7 @@ function persona(timeZone: string, now: number): string {
 /** Wires transport, per-chat sessions, memory, web and scheduling into one running bot. */
 export function createBot(options: BotOptions): Bot {
 	const now = options.now ?? Date.now;
-	const webTools = createWebTools(options.webBackends.search, options.webBackends.fetch);
+	const webTools = createWebTools(options.webBackends.search, options.webBackends.fetch, options.webBackends.images);
 	const memory = (chatId: number) => new MemoryStore(join(chatDir(options.dataDir, chatId), "memory"));
 	// The scheduler and the agents reference each other, so the factory reads it lazily.
 	const scheduler: Scheduler = new Scheduler({

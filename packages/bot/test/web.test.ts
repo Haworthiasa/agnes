@@ -9,6 +9,7 @@ import {
 	htmlToText,
 	MAX_FETCHES_PER_TURN,
 	McpWebBackend,
+	pageImages,
 	parseDuckDuckGoLite,
 	parseExaSearch,
 	parseParallelSearch,
@@ -195,6 +196,53 @@ describe("web_fetch", () => {
 		});
 		expect(result?.details).toEqual({ backend: "parallel,direct", failures: ["parallel https://x.org/b: HTTP 403"] });
 	});
+
+	it("lists the page's images, reading its HTML when the text backend returned none", async () => {
+		const reader: WebBackend = {
+			name: "parallel",
+			fetch: async ({ urls }) =>
+				urls.map((url) =>
+					url.endsWith("/a")
+						? { url, title: "A", text: "a".repeat(300) }
+						: { url, title: "B", text: "b".repeat(300), images: [{ url: "https://cdn.x.org/b.jpg" }] },
+				),
+		};
+		const [, fetchTool] = createWebTools([], [reader], async () => [
+			{ url: "https://cdn.x.org/a.jpg", alt: "Cầu Rồng" },
+		]);
+		const result = await fetchTool?.execute(
+			"id",
+			{ urls: ["https://x.org/a", "https://x.org/b"] } as never,
+			undefined,
+			undefined,
+			undefined as never,
+		);
+		expect(result?.content[0]).toEqual({
+			type: "text",
+			text: `[1] x.org · date unknown · A\nhttps://x.org/a\nImage: https://cdn.x.org/a.jpg (Cầu Rồng)\n${"a".repeat(300)}\n\n[2] x.org · date unknown · B\nhttps://x.org/b\nImage: https://cdn.x.org/b.jpg\n${"b".repeat(300)}`,
+		});
+	});
+});
+
+describe("pageImages", () => {
+	it("keeps the preview image and large content images with alt text, and drops decoration", () => {
+		const html = `<html><head>
+			<meta property="og:image" content="https://cdn.news.vn/cover.jpg?w=1200&amp;h=630">
+			<meta property="og:image:alt" content="Cầu Rồng phun lửa">
+			<meta name="twitter:image" content="https://cdn.news.vn/cover.jpg?w=1200&h=630">
+			</head><body><header><img src="/logo.png" alt="News"></header><article>
+			<img src="/photos/1.jpg" alt="Khán giả xem cầu" width="800" height="450">
+			<img src="/photos/thumb.jpg" alt="nhỏ" width="80" height="60">
+			<img src="/photos/2.jpg">
+			<img data-src="https://cdn.news.vn/photos/3.webp" alt='Đêm "pháo hoa"'>
+			<img src="/icons/share.svg" alt="share">
+			</article></body></html>`;
+		expect(pageImages(html, "https://news.vn/post/1")).toEqual([
+			{ url: "https://cdn.news.vn/cover.jpg?w=1200&h=630", alt: "Cầu Rồng phun lửa" },
+			{ url: "https://news.vn/photos/1.jpg", alt: "Khán giả xem cầu" },
+			{ url: "https://cdn.news.vn/photos/3.webp", alt: 'Đêm "pháo hoa"' },
+		]);
+	});
 });
 
 describe("fitToObjective", () => {
@@ -242,6 +290,7 @@ describe("parseExaSearch", () => {
 			"Title: Node.js 26.10.0",
 			"URL: https://nodejs.org/en/blog/release/v26.10.0",
 			"Published Date: 2026-09-21T00:00:00.000Z",
+			"Image: https://nodejs.org/static/og.png",
 			"Text: Notable changes",
 		].join("\n");
 		expect(parseExaSearch(text)).toEqual([
@@ -256,6 +305,7 @@ describe("parseExaSearch", () => {
 				title: "Node.js 26.10.0",
 				published: "2026-09-21T00:00:00.000Z",
 				excerpts: ["Notable changes"],
+				images: [{ url: "https://nodejs.org/static/og.png" }],
 			},
 		]);
 	});

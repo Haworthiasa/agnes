@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { InMemoryCredentialStore } from "@earendil-works/pi-ai";
 import { type FauxProviderRegistration, registerFauxProvider } from "@earendil-works/pi-ai/compat";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
-import type { ChatTransport, IncomingMessage } from "../src/types.ts";
+import type { ChatTransport, IncomingMessage, Photo } from "../src/types.ts";
 
 export interface FauxRuntime {
 	faux: FauxProviderRegistration;
@@ -52,11 +52,20 @@ export async function createFauxRuntime(): Promise<FauxRuntime> {
 /** In-memory transport: tests push messages in and read what the bot sent. */
 export class FakeTransport implements ChatTransport {
 	readonly sent: Array<{ chatId: number; text: string }> = [];
+	readonly photos: Array<{ chatId: number; photo: Photo; caption?: string }> = [];
+	/** Texts and photo captions in the order they were sent. */
+	readonly order: string[] = [];
 
 	async *receive(): AsyncIterable<IncomingMessage> {}
 
 	async send(chatId: number, text: string): Promise<void> {
 		this.sent.push({ chatId, text });
+		this.order.push(text);
+	}
+
+	async sendPhoto(chatId: number, photo: Photo, caption?: string): Promise<void> {
+		this.photos.push({ chatId, photo, caption });
+		this.order.push(`[photo] ${caption ?? ""}`);
 	}
 
 	async typing(): Promise<void> {}

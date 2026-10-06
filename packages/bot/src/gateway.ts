@@ -1,3 +1,5 @@
+import { readAttachment } from "./attachments.ts";
+import { deliverReply } from "./media.ts";
 import type { ChatAgent, ChatAgentFactory, ChatTransport, IncomingMessage } from "./types.ts";
 
 export interface GatewayOptions {
@@ -5,6 +7,8 @@ export interface GatewayOptions {
 	createAgent: ChatAgentFactory;
 	/** Telegram user ids allowed to talk to the bot. Everyone else is ignored. */
 	allowedUserIds: ReadonlySet<number>;
+	/** Downloads the images a reply shows. Defaults to a fetch that refuses non-public hosts. */
+	fetchImage?: typeof fetch;
 }
 
 interface ChatState {
@@ -20,12 +24,14 @@ export class Gateway {
 	private readonly transport: ChatTransport;
 	private readonly createAgent: ChatAgentFactory;
 	private readonly allowedUserIds: ReadonlySet<number>;
+	private readonly fetchImage: typeof fetch | undefined;
 	private readonly chats = new Map<number, ChatState>();
 
 	constructor(options: GatewayOptions) {
 		this.transport = options.transport;
 		this.createAgent = options.createAgent;
 		this.allowedUserIds = options.allowedUserIds;
+		this.fetchImage = options.fetchImage;
 	}
 
 	async run(signal: AbortSignal): Promise<void> {
@@ -46,8 +52,9 @@ export class Gateway {
 		return this.enqueue(message.chatId, async () => {
 			const agent = await this.agentFor(message.chatId, this.chat(message.chatId));
 			await this.transport.typing(message.chatId).catch(() => {});
-			const reply = await agent.prompt(text);
-			await this.transport.send(message.chatId, reply || "(không có phản hồi)");
+			const input = await readAttachment(text, message.file);
+			const reply = await agent.prompt(input.text, input.images);
+			await deliverReply(this.transport, message.chatId, reply, this.fetchImage);
 		});
 	}
 
