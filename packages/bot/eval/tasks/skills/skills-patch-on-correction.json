@@ -1,0 +1,91 @@
+{
+	"id": "skills-patch-on-correction",
+	"category": "skills",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": true,
+	"description": "The user corrects the closing line of a saved routine. The agent patches the saved skill.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"skills": [
+					{
+						"name": "daily-brief",
+						"description": "Bản tin ngày: thời tiết và lịch",
+						"body": "1. Thời tiết hôm nay\n2. Lịch trong ngày\nKết thúc bằng câu: Chúc bạn ngày mới."
+					}
+				]
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Cho mình bản tin hôm nay"
+		},
+		{
+			"text": "Sửa lại quy trình bản tin: câu kết thúc đổi thành 'Chúc bạn một ngày tốt lành'.",
+			"advanceMs": 60000
+		}
+	],
+	"graders": [
+		{
+			"kind": "skillBodyMatches",
+			"name": "daily-brief",
+			"pattern": "một ngày tốt lành",
+			"required": true
+		},
+		{
+			"kind": "skillExists",
+			"name": "daily-brief"
+		}
+	],
+	"reference": {
+		"skills": [
+			{
+				"name": "daily-brief",
+				"description": "Bản tin ngày: thời tiết và lịch",
+				"body": "1. Thời tiết hôm nay\n2. Lịch trong ngày\nKết thúc bằng câu: Chúc bạn một ngày tốt lành."
+			}
+		]
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "daily-brief"
+		},
+		{
+			"from": "tool",
+			"name": "skill_view",
+			"text": "Chúc bạn ngày mới"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "skill_view",
+					"args": {
+						"name": "daily-brief"
+					}
+				}
+			],
+			"reply": "Bản tin hôm nay: chưa có dữ liệu thời tiết hay lịch."
+		},
+		"1": {
+			"calls": [
+				{
+					"name": "skill_manage",
+					"args": {
+						"action": "patch",
+						"name": "daily-brief",
+						"old_text": "Chúc bạn ngày mới",
+						"new_text": "Chúc bạn một ngày tốt lành"
+					}
+				}
+			],
+			"reply": "Đã sửa câu kết."
+		}
+	}
+}

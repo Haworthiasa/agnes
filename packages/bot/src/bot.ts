@@ -29,6 +29,8 @@ export interface BotOptions {
 	 * prompt cache and one run's cache hits do not flatter the next.
 	 */
 	promptSalt?: string;
+	/** Tests and evaluation only. Downloads the images a reply shows. Defaults to a fetch that refuses non-public hosts. */
+	fetchImage?: typeof fetch;
 }
 
 export interface Bot {
@@ -107,6 +109,7 @@ export function createBot(options: BotOptions): Bot {
 		transport: options.transport,
 		allowedUserIds: options.allowedUserIds,
 		createAgent,
+		fetchImage: options.fetchImage,
 	});
 	return { gateway, scheduler };
 }

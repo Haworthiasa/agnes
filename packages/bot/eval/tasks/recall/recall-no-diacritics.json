@@ -1,0 +1,68 @@
+{
+	"id": "recall-no-diacritics",
+	"category": "recall",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "The question has no Vietnamese diacritics. The agent still finds the fact in an old session.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"sessions": [
+					{
+						"daysAgo": 2,
+						"messages": [
+							{
+								"role": "user",
+								"text": "Con mèo của mình tên là Kiwi, mới được ba tháng tuổi"
+							},
+							{
+								"role": "assistant",
+								"text": "Kiwi là cái tên dễ thương!"
+							}
+						]
+					}
+				]
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "ten con meo cua minh la gi nhi"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "Kiwi",
+			"required": true
+		}
+	],
+	"reference": {
+		"reply": "Con mèo của bạn tên là Kiwi."
+	},
+	"needs": [
+		{
+			"offers": "session_search"
+		},
+		{
+			"from": "tool",
+			"name": "session_search",
+			"text": "Kiwi"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "session_search",
+					"args": {
+						"query": "meo"
+					}
+				}
+			]
+		}
+	}
+}

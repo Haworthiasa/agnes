@@ -21,6 +21,8 @@ export interface PolicyLog {
 	toolCalls: ToolCallLog[];
 	/** Parameter schema (as JSON) of every tool the latest request declared, by tool name. */
 	toolSchemas: Record<string, string>;
+	/** Full definition (name, description, parameters) of every tool the latest request declared, as JSON. */
+	toolDefinitions: Record<string, string>;
 }
 
 type Content = Message["content"];
@@ -133,6 +135,9 @@ export function installPolicy(
 		faux.appendResponses([step]);
 		log.toolSchemas = Object.fromEntries(
 			getCurrentTools(context.messages).map((tool) => [tool.name, JSON.stringify(tool.parameters)]),
+		);
+		log.toolDefinitions = Object.fromEntries(
+			getCurrentTools(context.messages).map((tool) => [tool.name, JSON.stringify(tool)]),
 		);
 		simulator.record(options?.sessionId ?? "no-session", context, getCurrentSystemPrompt(context.messages));
 		return decide(context, clock, log);

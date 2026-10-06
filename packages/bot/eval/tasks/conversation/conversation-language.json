@@ -1,0 +1,53 @@
+{
+	"id": "conversation-language",
+	"category": "conversation",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "A Vietnamese question gets a short reply in Vietnamese.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Làm sao để pha một ly cà phê sữa đá ngon?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "\\b(the|and|you|your|with|add)\\b",
+			"negate": true,
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "cà phê|phin|sữa|đá",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "[ăâđêôơưàáảãạèéẻẽẹìíỉĩịòóỏõọùúủũụỳýỷỹỵ]",
+			"required": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "vietnamese-short",
+			"question": "Is the reply written in Vietnamese and no longer than about 8 lines?",
+			"passWhen": "The reply is in Vietnamese and has at most about 8 lines."
+		}
+	],
+	"reference": {
+		"reply": "Pha phin 20g cà phê với 60ml nước 95 độ, chờ 4-5 phút, rồi đổ vào ly đá và thêm sữa đặc."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "Reply in the user's language"
+		}
+	],
+	"oracle": {
+		"0": {}
+	}
+}

@@ -1,0 +1,82 @@
+{
+	"id": "recall-old-session",
+	"category": "recall",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "real-failure",
+	"heldOut": false,
+	"description": "A fact lives only in a session from 3 days ago. The agent finds it and answers.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"sessions": [
+					{
+						"daysAgo": 3,
+						"messages": [
+							{
+								"role": "user",
+								"text": "Mình vừa đăng ký chạy bán marathon ở Đà Nẵng, giải diễn ra ngày 14/12"
+							},
+							{
+								"role": "assistant",
+								"text": "Chúc bạn tập luyện tốt! Mình ghi nhận giải bán marathon Đà Nẵng ngày 14/12."
+							}
+						]
+					}
+				]
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Hôm trước mình kể sắp chạy giải nào nhỉ?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "Đà Nẵng|Da Nang",
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "14/12|14 tháng 12"
+		},
+		{
+			"kind": "rubric",
+			"dimension": "answers-from-history",
+			"question": "Does the reply say the user signed up for a half marathon in Da Nang on 14 December, and add no other race details?",
+			"passWhen": "The reply names the Da Nang half marathon and the date 14/12, and invents nothing else about it."
+		}
+	],
+	"reference": {
+		"reply": "Bạn kể sắp chạy giải bán marathon ở Đà Nẵng, ngày 14/12."
+	},
+	"needs": [
+		{
+			"offers": "session_search"
+		},
+		{
+			"from": "tool",
+			"name": "session_search",
+			"text": "Đà Nẵng"
+		},
+		{
+			"from": "prompt",
+			"text": "Use session_search only when"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "session_search",
+					"args": {
+						"query": "marathon"
+					}
+				}
+			]
+		}
+	}
+}

@@ -8,7 +8,7 @@ import { chatDir, createBot } from "../../src/bot.ts";
 import { type Job, JobStore } from "../../src/scheduler.ts";
 import { SkillStore } from "../../src/skills.ts";
 import { FakeTransport } from "../helpers.ts";
-import { drive } from "./drive.ts";
+import { drive, type TurnInfo } from "./drive.ts";
 import type { Journey, Step } from "./journeys.ts";
 
 const TIME_ZONE = "Asia/Ho_Chi_Minh";
@@ -64,6 +64,8 @@ export interface LiveTurn {
 	costComputed: number;
 	toolCalls: string[];
 	systemMessagesAdded: number;
+	/** Tool calls that came back as an error. */
+	toolErrors: number;
 	/** Scheduled jobs after the step. */
 	jobs: Job[];
 }
@@ -84,18 +86,25 @@ interface StoredAssistant {
 }
 
 interface StoredEntry {
-	message?: { role?: string; usage?: StoredAssistant["usage"]; content?: Array<{ type: string; name?: string }> };
+	message?: {
+		role?: string;
+		isError?: boolean;
+		usage?: StoredAssistant["usage"];
+		content?: Array<{ type: string; name?: string }>;
+	};
 	role?: string;
+	isError?: boolean;
 	usage?: StoredAssistant["usage"];
 	content?: Array<{ type: string; name?: string }>;
 }
 
 /** Reads the assistant turns and the system message count from every stored transcript. */
-function readStored(dataDir: string): { assistants: StoredAssistant[]; systemMessages: number } {
+function readStored(dataDir: string): { assistants: StoredAssistant[]; systemMessages: number; toolErrors: number } {
 	const assistants: StoredAssistant[] = [];
 	let systemMessages = 0;
+	let toolErrors = 0;
 	const chats = join(dataDir, "chats");
-	if (!existsSync(chats)) return { assistants, systemMessages };
+	if (!existsSync(chats)) return { assistants, systemMessages, toolErrors };
 	for (const chat of readdirSync(chats)) {
 		const sessions = join(chats, chat, "sessions");
 		if (!existsSync(sessions)) continue;
@@ -105,6 +114,7 @@ function readStored(dataDir: string): { assistants: StoredAssistant[]; systemMes
 				const entry = JSON.parse(line) as StoredEntry;
 				const message = entry.message ?? entry;
 				if (message.role === "system") systemMessages++;
+				if (message.role === "toolResult" && message.isError) toolErrors++;
 				if (message.role === "assistant" && message.usage) {
 					assistants.push({
 						key: `${chat}/${file}#${index}`,
@@ -117,7 +127,59 @@ function readStored(dataDir: string): { assistants: StoredAssistant[]; systemMes
 			}
 		}
 	}
-	return { assistants, systemMessages };
+	return { assistants, systemMessages, toolErrors };
+}
+
+/** What the stored transcripts held before a step, to tell what the step added. */
+export interface TurnBaseline {
+	seen: Set<string>;
+	system: number;
+	errors: number;
+}
+
+/**
+ * Measures each step of a run from the transcripts the bot stored in `dataDir`: model calls, tokens, tool calls, failed
+ * tool calls and scheduled jobs. Pass `snapshot` and `finish` to `drive`.
+ */
+export function turnRecorder(dataDir: string, price: PriceSnapshot) {
+	return {
+		snapshot: (): TurnBaseline => {
+			const stored = readStored(dataDir);
+			return {
+				seen: new Set(stored.assistants.map((entry) => entry.key)),
+				system: stored.systemMessages,
+				errors: stored.toolErrors,
+			};
+		},
+		finish: (before: TurnBaseline, { index, step, reply, wallMs, clockMs }: TurnInfo): LiveTurn => {
+			const stored = readStored(dataDir);
+			const fresh = stored.assistants.filter((entry) => !before.seen.has(entry.key));
+			const sum = (pick: (usage: StoredAssistant["usage"]) => number) =>
+				fresh.reduce((total, entry) => total + pick(entry.usage), 0);
+			const usage = {
+				input: sum((u) => u.input),
+				output: sum((u) => u.output),
+				cacheRead: sum((u) => u.cacheRead),
+				cacheWrite: sum((u) => u.cacheWrite),
+			};
+			return {
+				index,
+				kind: step.kind,
+				user: step.kind === "say" ? step.text : step.kind,
+				reply,
+				clockMs,
+				wallMs,
+				modelCalls: fresh.length,
+				...usage,
+				costReported: sum((u) => u.cost?.total ?? 0),
+				costComputed: costOf(price, usage),
+				toolCalls: fresh.flatMap((entry) => entry.toolNames),
+				systemMessagesAdded: stored.systemMessages - before.system,
+				toolErrors: stored.toolErrors - before.errors,
+				jobs: new JobStore(join(dataDir, "jobs.json")).all(),
+			};
+		},
+	};
 }
 
 export interface LiveOptions {
@@ -133,6 +195,7 @@ export async function runLiveJourney(journey: Journey, options: LiveOptions): Pr
 	try {
 		const clock = { now: journey.start };
 		const transport = new FakeTransport();
+		const recorder = turnRecorder(dataDir, price);
 		const turns = await drive(
 			journey,
 			{
@@ -152,37 +215,8 @@ export async function runLiveJourney(journey: Journey, options: LiveOptions): Pr
 				transport,
 				clock,
 			},
-			() => {
-				const stored = readStored(dataDir);
-				return { seen: new Set(stored.assistants.map((entry) => entry.key)), system: stored.systemMessages };
-			},
-			(before, { index, step, reply, wallMs, clockMs }): LiveTurn => {
-				const stored = readStored(dataDir);
-				const fresh = stored.assistants.filter((entry) => !before.seen.has(entry.key));
-				const sum = (pick: (usage: StoredAssistant["usage"]) => number) =>
-					fresh.reduce((total, entry) => total + pick(entry.usage), 0);
-				const usage = {
-					input: sum((u) => u.input),
-					output: sum((u) => u.output),
-					cacheRead: sum((u) => u.cacheRead),
-					cacheWrite: sum((u) => u.cacheWrite),
-				};
-				return {
-					index,
-					kind: step.kind,
-					user: step.kind === "say" ? step.text : step.kind,
-					reply,
-					clockMs,
-					wallMs,
-					modelCalls: fresh.length,
-					...usage,
-					costReported: sum((u) => u.cost?.total ?? 0),
-					costComputed: costOf(price, usage),
-					toolCalls: fresh.flatMap((entry) => entry.toolNames),
-					systemMessagesAdded: stored.systemMessages - before.system,
-					jobs: new JobStore(join(dataDir, "jobs.json")).all(),
-				};
-			},
+			recorder.snapshot,
+			recorder.finish,
 		);
 		const memory: LiveRun["memory"] = {};
 		for (const chat of new Set(journey.steps.flatMap((step) => ("chat" in step ? [step.chat] : [])))) {

@@ -1,0 +1,182 @@
+{
+	"id": "conversation-change-direction",
+	"category": "conversation",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "transcript",
+	"heldOut": false,
+	"description": "The user rejects the suggestions and says what style they want. The agent offers different options, not the same ones again.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"sessions": [
+					{
+						"daysAgo": 0.01,
+						"live": true,
+						"messages": [
+							{
+								"role": "user",
+								"text": "Tìm giúp mình đèn bàn rẻ mà tốt"
+							},
+							{
+								"role": "assistant",
+								"text": "Mình gợi ý: Xiaomi Mijia Desk Lamp 2 Lite (khoảng 320k) và đèn học Rạng Đông (khoảng 180k)."
+							}
+						]
+					}
+				]
+			}
+		},
+		"web": {
+			"search": [
+				{
+					"match": "lymax",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				},
+				{
+					"match": "ikea",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				},
+				{
+					"match": "đèn",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				},
+				{
+					"match": "den ban",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				},
+				{
+					"match": "light bar",
+					"results": [
+						{
+							"title": "Monitor light bar Lymax L1",
+							"url": "https://shop.example.vn/lymax-l1",
+							"excerpt": "Thanh đèn gắn lên màn hình, ánh sáng không chói, khoảng 439.000đ."
+						},
+						{
+							"title": "Đèn bàn IKEA TERTIAL",
+							"url": "https://shop.example.vn/ikea-tertial",
+							"excerpt": "Đèn bàn kẹp kiểu tối giản, tay đòn linh hoạt, khoảng 550.000đ."
+						}
+					]
+				}
+			],
+			"pages": {
+				"https://shop.example.vn/lymax-l1": {
+					"text": "Monitor light bar Lymax L1. Thanh đèn gắn trên đỉnh màn hình, chiếu xuống bàn mà không phản chiếu lên màn hình. Có điều chỉnh độ sáng và nhiệt độ màu, giá khoảng 439.000đ trên các sàn thương mại điện tử, bảo hành mười hai tháng. Gói hàng gồm thanh đèn, cáp USB và hướng dẫn lắp đặt bằng tiếng Việt.",
+					"images": [
+						"https://shop.example.vn/img/lymax-l1.png"
+					]
+				},
+				"https://shop.example.vn/ikea-tertial": {
+					"text": "Đèn bàn IKEA TERTIAL. Đèn kẹp mép bàn, hai khớp xoay, thiết kế tối giản màu xám đậm, dùng bóng LED thay được. Giá khoảng 550.000đ, phù hợp bàn học và bàn làm việc nhỏ. Có thể mua tại cửa hàng IKEA hoặc đặt qua trang web chính thức, giao hàng trong ba đến năm ngày làm việc ở các thành phố lớn.",
+					"images": [
+						"https://shop.example.vn/img/ikea-tertial.png"
+					]
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Trông vẫn xấu và trẻ con. Mình là sinh viên, thích kiểu tối giản."
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "Mijia|Rạng Đông",
+			"negate": true,
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "đèn|light bar|lamp",
+			"required": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "changes-direction",
+			"question": "Does the reply offer lamp options that differ from the Xiaomi Mijia and Rang Dong lamps and fit a minimalist style?",
+			"passWhen": "The reply names other, minimalist lamps and does not repeat the rejected ones."
+		}
+	],
+	"needs": [
+		{
+			"from": "history",
+			"text": "Xiaomi Mijia"
+		},
+		{
+			"from": "latest",
+			"text": "tối giản"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_search",
+					"args": {
+						"objective": "Minimalist desk lamps for a student",
+						"queries": [
+							"đèn bàn tối giản"
+						]
+					}
+				}
+			]
+		}
+	},
+	"reference": {
+		"reply": "Vậy thử thanh đèn gắn màn hình Lymax L1 hoặc đèn kẹp IKEA TERTIAL, kiểu tối giản hơn nhiều."
+	},
+	"foil": {
+		"0": {
+			"reply": "Vậy bạn chọn Xiaomi Mijia Desk Lamp 2 Lite nhé, đèn rất đẹp."
+		}
+	}
+}

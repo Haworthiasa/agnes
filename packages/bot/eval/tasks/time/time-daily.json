@@ -1,0 +1,51 @@
+{
+	"id": "time-daily",
+	"category": "time",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "The user asks for a daily reminder at 7 am. The agent creates a daily job at 07:00.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Hằng ngày 7h sáng nhắc mình uống vitamin nhé."
+		}
+	],
+	"graders": [
+		{
+			"kind": "jobDue",
+			"daily": "07:00",
+			"required": true
+		}
+	],
+	"reference": {
+		"jobDaily": "07:00",
+		"reply": "Ok, mỗi ngày 07:00 mình nhắc bạn uống vitamin."
+	},
+	"needs": [
+		{
+			"offers": "schedule"
+		},
+		{
+			"from": "prompt",
+			"text": "daily briefs"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "schedule",
+					"args": {
+						"action": "create",
+						"prompt": "Nhắc uống vitamin",
+						"daily_at": "07:00"
+					}
+				}
+			]
+		}
+	}
+}

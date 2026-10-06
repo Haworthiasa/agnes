@@ -57,6 +57,8 @@ export interface JourneyResult {
 	toolNames: string[];
 	/** Parameter schema (JSON) of every tool the last request declared. */
 	toolSchemas: Record<string, string>;
+	/** Full definition (JSON) of every tool the last request declared. Counts toward the fixed prompt overhead. */
+	toolDefinitions: Record<string, string>;
 }
 
 function readIfExists(path: string): string | null {
@@ -92,7 +94,7 @@ export async function runJourney(journey: Journey, options: RunOptions = {}): Pr
 	try {
 		const clock = { now: journey.start };
 		const simulator = new CacheSimulator(options.profile ?? ZAI_PROFILE);
-		const log: PolicyLog = { toolCalls: [], toolSchemas: {} };
+		const log: PolicyLog = { toolCalls: [], toolSchemas: {}, toolDefinitions: {} };
 		installPolicy(runtime.faux, simulator, () => clock.now, log);
 		const transport = new FakeTransport();
 		const env = {
@@ -178,6 +180,7 @@ export async function runJourney(journey: Journey, options: RunOptions = {}): Pr
 			restarts: journey.steps.filter((step) => step.kind === "restart").length,
 			toolNames: [...new Set(log.toolCalls.map((call) => call.name))],
 			toolSchemas: log.toolSchemas,
+			toolDefinitions: log.toolDefinitions,
 		};
 	} finally {
 		runtime.cleanup();

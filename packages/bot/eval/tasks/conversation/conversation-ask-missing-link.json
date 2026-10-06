@@ -1,0 +1,63 @@
+{
+	"id": "conversation-ask-missing-link",
+	"category": "conversation",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "transcript",
+	"heldOut": false,
+	"description": "The user asks for a summary of a video but sends no link. The agent asks for the link and does not search for a made-up video.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Tổng hợp thông tin về video này giúp mình."
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "link|đường dẫn|URL|dán",
+			"required": true
+		},
+		{
+			"kind": "toolNotCalled",
+			"name": "web_search",
+			"required": true
+		}
+	],
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "Read links the user sends with web_fetch"
+		},
+		{
+			"from": "latest",
+			"text": "video"
+		}
+	],
+	"oracle": {
+		"0": {
+			"reply": "Bạn dán link video giúp mình nhé, mình sẽ tổng hợp ngay."
+		}
+	},
+	"reference": {
+		"reply": "Bạn dán link video giúp mình nhé, mình sẽ tổng hợp ngay."
+	},
+	"foil": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_search",
+					"args": {
+						"objective": "video summary",
+						"queries": [
+							"video tổng hợp"
+						]
+					}
+				}
+			],
+			"reply": "Video nói về trí tuệ nhân tạo."
+		}
+	}
+}

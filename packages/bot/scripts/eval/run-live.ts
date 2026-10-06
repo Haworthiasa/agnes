@@ -4,19 +4,35 @@
 //
 // Run from packages/bot:
 //   node --import ../coding-agent/src/experimental/source-resolver.ts scripts/eval/run-live.ts --dry-run
-//   node --import ../coding-agent/src/experimental/source-resolver.ts scripts/eval/run-live.ts [--model zai/glm-5.3-flash] [--repeats 3] [--journeys j1-new-user,j2-returning-user] [--budget-usd 0.5] [--compare eval/baselines/live.json] [--save-baseline]
+//   node --import ../coding-agent/src/experimental/source-resolver.ts scripts/eval/run-live.ts [--model zai/glm-5.3-flash] [--repeats 3] [--journeys j1-new-user,j2-returning-user] [--budget-usd 0.5] [--compare eval/baselines/live.json] [--kind feature|optimization --affected j8-skill-routine] [--save-baseline]
+//
+// With --compare, the baseline must be in the same series (model, scenarios, cache profile, thinking level);
+// otherwise the run exits 2 before it spends anything. With --kind, the run prints `OVERALL: <verdict>` and exits 1
+// on `worse` or `no-gain`. --affected lists the journeys the change targets; every other journey is a guardrail.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import {
+	assertSameSeries,
+	POLICY,
+	type PrKind,
+	readLedger,
+	type Series,
+	scenarioHashOf,
+	seriesOf,
+	verdict,
+} from "../../test/eval/guardrails.ts";
 import { JOURNEYS } from "../../test/eval/journeys.ts";
+import { measureFixedOverhead } from "../../test/eval/overhead.ts";
 import { type LiveRun, priceOf, runLiveJourney } from "../../test/eval/live.ts";
 import {
 	buildLiveReport,
 	compareLiveReports,
 	type LiveReport,
+	liveComparison,
 	renderLiveComparison,
 	renderLiveMarkdown,
 } from "../../test/eval/live-report.ts";
@@ -31,6 +47,8 @@ const { values: flags } = parseArgs({
 		"dry-run": { type: "boolean", default: false },
 		"save-baseline": { type: "boolean", default: false },
 		compare: { type: "string" },
+		kind: { type: "string" },
+		affected: { type: "string" },
 	},
 });
 const botRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -38,6 +56,9 @@ const git = (...args: string[]) => execFileSync("git", args, { cwd: botRoot, enc
 const repeats = Number(flags.repeats);
 const budget = Number(flags["budget-usd"]);
 const wanted = flags.journeys?.split(",");
+const kind = flags.kind as PrKind | undefined;
+if (kind !== undefined && kind !== "feature" && kind !== "optimization") throw new Error("--kind is feature or optimization.");
+if (kind && !flags.compare) throw new Error("--kind needs --compare: a verdict compares a run with a baseline.");
 const journeys = JOURNEYS.filter((journey) => !wanted || wanted.includes(journey.id));
 
 const modelRuntime = await ModelRuntime.create();
@@ -45,6 +66,23 @@ const [provider, ...rest] = (flags.model as string).split("/");
 const model = modelRuntime.getModel(provider ?? "", rest.join("/"));
 if (!model) throw new Error(`Unknown model ${flags.model}.`);
 const price = priceOf(model);
+// The scenario hash covers every journey, so a --journeys subset still compares with a full baseline.
+const series: Series = {
+	agentModel: price.model,
+	graderModel: "none",
+	scenarioHash: scenarioHashOf(JOURNEYS),
+	cacheProfile: "provider",
+	thinkingLevel: "default",
+};
+const before = flags.compare ? (JSON.parse(readFileSync(resolve(botRoot, flags.compare), "utf8")) as LiveReport) : undefined;
+if (before) {
+	try {
+		assertSameSeries(seriesOf(before.meta), series);
+	} catch (error) {
+		process.stderr.write(`${(error as Error).message}\n`);
+		process.exit(2);
+	}
+}
 
 // The estimate reuses the deterministic baseline: its prompt tokens per journey, billed uncached, plus a guess of
 // 150 output tokens per model call. A real model may call tools more often, so treat it as a floor.
@@ -63,6 +101,9 @@ if (flags["dry-run"]) process.exit(0);
 
 const auth = await modelRuntime.checkAuth(model.provider);
 if (!auth) throw new Error(`No credentials for ${model.provider}.`);
+
+// The prompt and the tool definitions do not depend on the model, so the scripted tier measures them without a call.
+const overhead = await measureFixedOverhead();
 
 const startedAt = new Date();
 const runs: LiveRun[] = [];
@@ -100,12 +141,27 @@ writeFileSync(join(dir, "report.json"), `${JSON.stringify(report, null, "\t")}\n
 const markdown = renderLiveMarkdown(report);
 writeFileSync(join(dir, "report.md"), markdown);
 process.stdout.write(`\n${markdown}\nReport: ${dir}\n`);
-if (flags.compare) {
-	const before = JSON.parse(readFileSync(resolve(botRoot, flags.compare), "utf8")) as LiveReport;
+if (before) {
 	process.stdout.write(`\n## Comparison with ${flags.compare} (${before.meta.sha})\n\n${renderLiveComparison(compareLiveReports(before, report))}`);
+}
+let exitCode = 0;
+if (before && kind) {
+	const reference = readLedger().find((entry) => entry.sha === POLICY.fixedOverhead.referenceSha)?.fixedOverheadTokens ?? undefined;
+	const result = verdict(
+		kind,
+		liveComparison(before, report, {
+			turnsByJourney: Object.fromEntries(JOURNEYS.map((journey) => [journey.id, journey.steps.length])),
+			affected: flags.affected?.split(",") ?? [],
+			fixedOverheadReference: reference,
+		}),
+	);
+	process.stdout.write(`\nOVERALL: ${result.verdict}\n${result.reasons.map((reason) => `- ${reason}`).join("\n")}\n`);
+	if (reference === undefined) process.stdout.write(`- fixed overhead cap not checked: the ledger has no row for ${POLICY.fixedOverhead.referenceSha}\n`);
+	if (result.verdict !== "better") exitCode = 1;
 }
 if (flags["save-baseline"]) {
 	const target = join(botRoot, "eval", "baselines", "live.json");
 	writeFileSync(target, `${JSON.stringify(report, null, "\t")}\n`);
 	process.stdout.write(`Baseline saved: ${target}\n`);
 }
+process.exitCode = exitCode;

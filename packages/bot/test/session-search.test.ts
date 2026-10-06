@@ -7,26 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createBot } from "../src/bot.ts";
 import { QueryError, queryWords, SessionIndex } from "../src/session-index.ts";
 import { textOf } from "./eval/policy.ts";
+import { type Line, transcript } from "./eval/seed.ts";
 import { createFauxRuntime, FakeTransport, type FauxRuntime } from "./helpers.ts";
-
-type Line = { role: "user" | "assistant" | "toolResult" | "system"; text: string };
-
-/** One stored transcript in the shape pi writes: a session header, then one entry per message. */
-function transcript(id: string, messages: Line[], startMs = Date.parse("2026-10-05T08:00:00Z")): string {
-	const lines = [{ type: "session", version: 3, id, timestamp: new Date(startMs).toISOString(), cwd: "/w" }];
-	for (const [index, message] of messages.entries()) {
-		lines.push({
-			type: "message",
-			id: `e${index}`,
-			timestamp: new Date(startMs + index * 1000).toISOString(),
-			message: {
-				role: message.role,
-				content: message.role === "user" ? message.text : [{ type: "text", text: message.text }],
-			},
-		} as never);
-	}
-	return `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`;
-}
 
 describe("session index", () => {
 	let root: string;

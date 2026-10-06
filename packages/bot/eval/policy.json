@@ -1,0 +1,7 @@
+{
+	"costUnitWeights": { "input": 1, "cacheRead": 0.2, "cacheWrite": 1.25, "output": 4 },
+	"fixedOverhead": { "perFeatureTokens": 500, "capOverReferenceTokens": 1500, "referenceSha": "68af782c1" },
+	"nim": { "unaffectedCuPerTurn": 0.15, "unaffectedTime": 0.15, "regressionPassRate": 0, "optimizationOec": 0.03, "otherCategory": 0.03 },
+	"optimizationGain": { "cu": 0.05, "time": 0.1, "fixedOverhead": 0.1 },
+	"significance": { "minRuns": 3, "pooledSd": 2, "fisherP": 0.1, "bootstrapResamples": 2000, "seed": 20261006 }
+}

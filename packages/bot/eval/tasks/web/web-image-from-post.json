@@ -1,0 +1,68 @@
+{
+	"id": "web-image-from-post",
+	"category": "web",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "The user sends a link to a post. The agent reads it and shows the post's main picture.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"web": {
+			"pages": {
+				"https://example.org/blog/bun-cha": {
+					"text": "# Quán bún chả ở phố Hàng Mành\nThịt nướng than hoa, nước chấm chua ngọt, ăn kèm bún và rau sống.\n\nĐịa chỉ nằm ở phố Hàng Mành, mở cửa từ mười giờ sáng đến chín giờ tối mỗi ngày. Giá một suất khoảng bảy mươi nghìn đồng, quán nhận đặt bàn trước qua điện thoại và có chỗ để xe máy ngay trước cửa.",
+					"images": [
+						"https://example.org/img/bun-cha.png"
+					]
+				}
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Đọc giúp mình bài này và cho xem ảnh chính: https://example.org/blog/bun-cha"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "\\[photo\\]",
+			"required": true
+		},
+		{
+			"kind": "toolCalled",
+			"name": "web_fetch"
+		}
+	],
+	"reference": {
+		"reply": "Bài nói về quán bún chả ở Hà Nội.\n[photo] Bún chả"
+	},
+	"needs": [
+		{
+			"from": "tool",
+			"name": "web_fetch",
+			"text": "Image: https://example.org/img/bun-cha.png"
+		},
+		{
+			"from": "prompt",
+			"text": "show its main picture"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "web_fetch",
+					"args": {
+						"urls": [
+							"https://example.org/blog/bun-cha"
+						],
+						"objective": "main picture"
+					}
+				}
+			],
+			"reply": "Bài nói về quán bún chả.\n![Bún chả](https://example.org/img/bun-cha.png)"
+		}
+	}
+}

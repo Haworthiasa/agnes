@@ -5,8 +5,8 @@ import type { Journey, Step } from "./journeys.ts";
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
 
-function photo(): IncomingFile {
-	return { name: "photo.png", mimeType: "image/png", download: async () => PNG };
+function photo(bytes: Uint8Array): IncomingFile {
+	return { name: "photo.png", mimeType: "image/png", download: async () => bytes };
 }
 
 export interface DriveEnv {
@@ -14,6 +14,8 @@ export interface DriveEnv {
 	start(): Bot;
 	transport: FakeTransport;
 	clock: { now: number };
+	/** The bytes an `image` step sends. Defaults to a 4-byte stub, which a real model cannot see. */
+	photo?: Uint8Array;
 }
 
 export interface TurnInfo {
@@ -50,7 +52,7 @@ export async function drive<TBefore, TTurn>(
 					chatId: step.chat,
 					userId: step.user,
 					text: step.text,
-					...(step.image ? { file: photo() } : {}),
+					...(step.image ? { file: photo(env.photo ?? PNG) } : {}),
 				});
 			} else if (step.kind === "new") {
 				await bot.gateway.handle({ chatId: step.chat, userId: step.user, text: "/new" });

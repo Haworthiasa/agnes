@@ -1,0 +1,63 @@
+{
+	"id": "skills-no-unrelated-use",
+	"category": "skills",
+	"polarity": "should-not",
+	"difficulty": "hard",
+	"source": "synthetic",
+	"heldOut": true,
+	"description": "A saved brief skill does not apply to an unrelated question. The reply does not use its format.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"skills": [
+					{
+						"name": "daily-brief",
+						"description": "Bản tin ngày: thời tiết và lịch",
+						"body": "• Thời tiết hôm nay\n• Lịch trong ngày\nKết thúc bằng câu: Chúc bạn ngày mới."
+					}
+				]
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Thủ đô của Nhật Bản là gì?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "•|Chúc bạn ngày mới",
+			"negate": true,
+			"required": true
+		},
+		{
+			"kind": "replyMatches",
+			"pattern": "Tokyo|Tô[- ]?ky?ô|Đông Kinh"
+		},
+		{
+			"kind": "rubric",
+			"dimension": "skill-not-misused",
+			"question": "Does the reply answer the capital question directly, without the weather and schedule format of the brief?",
+			"passWhen": "The reply is a short direct answer and does not use the brief's sections or closing line."
+		}
+	],
+	"reference": {
+		"reply": "Thủ đô của Nhật Bản là Tokyo."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "daily-brief"
+		}
+	],
+	"oracle": {
+		"0": {}
+	},
+	"foil": {
+		"0": {
+			"reply": "• Thời tiết hôm nay: nắng\n• Lịch trong ngày: trống\nChúc bạn ngày mới."
+		}
+	}
+}

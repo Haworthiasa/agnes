@@ -1,0 +1,74 @@
+{
+	"id": "recall-paraphrase",
+	"category": "recall",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "synthetic",
+	"heldOut": true,
+	"description": "The question uses other words than the old talk. The agent still finds the fact.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00",
+		"chats": {
+			"111": {
+				"sessions": [
+					{
+						"daysAgo": 4,
+						"messages": [
+							{
+								"role": "user",
+								"text": "Mình đang học tiếng Nhật, mục tiêu là thi JLPT N4 vào tháng 12"
+							},
+							{
+								"role": "assistant",
+								"text": "Chúc bạn học tốt! Mình ghi nhận mục tiêu JLPT N4."
+							}
+						]
+					}
+				]
+			}
+		}
+	},
+	"turns": [
+		{
+			"text": "Ngoại ngữ mình đang học là gì nhỉ?"
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "Nhật|Japanese|JLPT",
+			"required": true
+		},
+		{
+			"kind": "rubric",
+			"dimension": "answers-from-history",
+			"question": "Does the reply say the user is learning Japanese?",
+			"passWhen": "The reply names Japanese as the language the user is learning."
+		}
+	],
+	"reference": {
+		"reply": "Bạn đang học tiếng Nhật, mục tiêu JLPT N4."
+	},
+	"needs": [
+		{
+			"offers": "session_search"
+		},
+		{
+			"from": "tool",
+			"name": "session_search",
+			"text": "tiếng Nhật"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "session_search",
+					"args": {
+						"query": "học"
+					}
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,59 @@
+{
+	"id": "time-tomorrow-evening",
+	"category": "time",
+	"polarity": "should",
+	"difficulty": "hard",
+	"source": "synthetic",
+	"heldOut": true,
+	"description": "At 23:50 the user asks for a reminder at 9 pm tomorrow. The job is due on the next calendar day at 21:00 local time.",
+	"setup": {
+		"clock": "2026-10-06T23:50:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Nhắc mình 9h tối mai họp nhóm nhé."
+		}
+	],
+	"graders": [
+		{
+			"kind": "jobDue",
+			"at": "21:00",
+			"dayOffset": 1,
+			"required": true
+		}
+	],
+	"reference": {
+		"jobAt": {
+			"time": "21:00",
+			"dayOffset": 1
+		},
+		"reply": "Ok, 21:00 ngày mai mình nhắc bạn họp nhóm."
+	},
+	"needs": [
+		{
+			"from": "prompt",
+			"text": "6 October 2026 at 23:50"
+		},
+		{
+			"from": "prompt",
+			"text": "Asia/Ho_Chi_Minh"
+		},
+		{
+			"offers": "schedule"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "schedule",
+					"args": {
+						"action": "create",
+						"prompt": "Nhắc họp nhóm",
+						"at": "2026-10-07T21:00:00+07:00"
+					}
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,66 @@
+{
+	"id": "skills-create-on-request",
+	"category": "skills",
+	"polarity": "should",
+	"difficulty": "easy",
+	"source": "manual-check",
+	"heldOut": false,
+	"description": "The user asks the agent to save a repeatable procedure. The agent saves a skill that holds the format.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Lưu quy trình này giúp mình: mỗi khi mình gửi tên một bộ phim, bạn trả lời đúng 3 gạch đầu dòng: thể loại, năm ra mắt, một câu giới thiệu."
+		}
+	],
+	"graders": [
+		{
+			"kind": "skillExists",
+			"required": true
+		},
+		{
+			"kind": "skillBodyMatches",
+			"pattern": "thể loại",
+			"required": true
+		},
+		{
+			"kind": "skillBodyMatches",
+			"pattern": "năm"
+		}
+	],
+	"reference": {
+		"skills": [
+			{
+				"name": "phim-3-gach",
+				"description": "Trả lời tên phim bằng 3 gạch đầu dòng",
+				"body": "Khi user gửi tên một bộ phim, trả lời đúng 3 gạch đầu dòng:\n- thể loại\n- năm ra mắt\n- một câu giới thiệu"
+			}
+		]
+	},
+	"needs": [
+		{
+			"offers": "skill_manage"
+		},
+		{
+			"from": "prompt",
+			"text": "when asked to save a routine"
+		}
+	],
+	"oracle": {
+		"0": {
+			"calls": [
+				{
+					"name": "skill_manage",
+					"args": {
+						"action": "create",
+						"name": "phim-3-gach",
+						"description": "Trả lời tên phim bằng 3 gạch đầu dòng",
+						"body": "Khi user gửi tên một bộ phim, trả lời đúng 3 gạch đầu dòng:\n- thể loại\n- năm ra mắt\n- một câu giới thiệu"
+					}
+				}
+			],
+			"reply": "Đã lưu quy trình."
+		}
+	}
+}

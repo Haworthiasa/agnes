@@ -1,0 +1,51 @@
+{
+	"id": "conversation-no-repeat-now",
+	"category": "conversation",
+	"polarity": "should-not",
+	"difficulty": "easy",
+	"source": "synthetic",
+	"heldOut": false,
+	"description": "The bot adds a [Now: ...] clock line to a message after a long pause. The reply does not repeat that line.",
+	"setup": {
+		"clock": "2026-10-06T08:00:00+07:00"
+	},
+	"turns": [
+		{
+			"text": "Chào bạn"
+		},
+		{
+			"text": "Hôm nay mình nên mặc gì nhỉ?",
+			"advanceMs": 2400000
+		}
+	],
+	"graders": [
+		{
+			"kind": "replyMatches",
+			"pattern": "\\[Now:",
+			"negate": true,
+			"required": true,
+			"turn": 1
+		}
+	],
+	"reference": {
+		"reply": "Bạn nên mặc áo mỏng, mang thêm áo khoác nhẹ."
+	},
+	"needs": [
+		{
+			"from": "latest",
+			"text": "[Now:"
+		},
+		{
+			"from": "prompt",
+			"text": "Never repeat it"
+		}
+	],
+	"oracle": {
+		"1": {}
+	},
+	"foil": {
+		"1": {
+			"reply": "[Now: Tuesday, 6 October 2026 at 08:41 (Asia/Ho_Chi_Minh)] Bạn nên mặc áo mỏng."
+		}
+	}
+}
