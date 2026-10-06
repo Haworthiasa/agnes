@@ -49,6 +49,12 @@ export class MemoryStore {
 		this.write(target, entries);
 	}
 
+	/** The entries of one store as a bullet list, as the model sees them in the prompt. */
+	list(target: MemoryTarget): string {
+		const entries = this.entries(target);
+		return entries.length > 0 ? entries.map((entry) => `- ${entry}`).join("\n") : "(empty)";
+	}
+
 	usage(target: MemoryTarget): string {
 		return `${this.entries(target).join(ENTRY_SEPARATOR).length}/${MEMORY_LIMITS[target]} chars`;
 	}
@@ -74,7 +80,7 @@ export class MemoryStore {
 		const text = entries.join(ENTRY_SEPARATOR);
 		if (text.length > MEMORY_LIMITS[target]) {
 			throw new Error(
-				`${target} would hold ${text.length}/${MEMORY_LIMITS[target]} chars. Merge or remove entries first.`,
+				`${target} would hold ${text.length}/${MEMORY_LIMITS[target]} chars. Merge or remove entries first. Current entries:\n${this.list(target)}`,
 			);
 		}
 		mkdirSync(this.dir, { recursive: true });
@@ -106,7 +112,12 @@ export function createMemoryTool(store: MemoryStore): ToolDefinition {
 			if (action === "replace") store.replace(target, oldText as string, content as string);
 			if (action === "remove") store.remove(target, oldText as string);
 			return {
-				content: [{ type: "text", text: `Saved. ${target}: ${store.usage(target)}` }],
+				content: [
+					{
+						type: "text",
+						text: `Saved. ${target}: ${store.usage(target)}. Current entries:\n${store.list(target)}`,
+					},
+				],
 				details: { target, action },
 			};
 		},

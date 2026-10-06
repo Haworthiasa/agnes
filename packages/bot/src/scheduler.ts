@@ -93,7 +93,7 @@ export class Scheduler {
 	private readonly transport: ChatTransport;
 	private readonly createAgent: ChatAgentFactory;
 	readonly timeZone: string;
-	private readonly now: () => number;
+	readonly now: () => number;
 	private readonly tickMs: number;
 	private timer: ReturnType<typeof setInterval> | undefined;
 	private ticking: Promise<void> = Promise.resolve();

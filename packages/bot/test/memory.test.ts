@@ -25,7 +25,7 @@ describe("long-term memory", () => {
 		}).gateway;
 	}
 
-	it("saves a fact in one turn and shows it in the system prompt of the next turn and of a new chat", async () => {
+	it("saves a fact in one turn and shows it in the system prompt of a new session, not of the same session", async () => {
 		runtime = await createFauxRuntime();
 		const prompts: string[] = [];
 		runtime.faux.setResponses([
@@ -53,7 +53,9 @@ describe("long-term memory", () => {
 		bot.dispose();
 
 		expect(prompts).toHaveLength(2);
-		for (const prompt of prompts) expect(prompt).toContain("- Tên là An, thích cà phê đen");
+		// The prompt is frozen for a session so the provider's prompt cache holds; the next session shows the fact.
+		expect(prompts[0]).not.toContain("- Tên là An, thích cà phê đen");
+		expect(prompts[1]).toContain("- Tên là An, thích cà phê đen");
 		expect(readFileSync(join(runtime.dataDir, "chats", String(OWNER), "memory", "USER.md"), "utf8")).toBe(
 			"Tên là An, thích cà phê đen",
 		);

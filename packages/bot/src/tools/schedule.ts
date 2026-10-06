@@ -5,10 +5,23 @@ import { describeSchedule, type Schedule, type Scheduler } from "../scheduler.ts
 
 const MIN_INTERVAL_MINUTES = 5;
 const MAX_JOBS_PER_CHAT = 20;
+/** One year. */
+const MAX_IN_MINUTES = 525_600;
 
-function toSchedule(params: { every_minutes?: number; daily_at?: string; at?: string }): Schedule {
-	const given = [params.every_minutes, params.daily_at, params.at].filter((value) => value !== undefined);
-	if (given.length !== 1) throw new Error("Give exactly one of every_minutes, daily_at or at.");
+function toSchedule(
+	params: { every_minutes?: number; daily_at?: string; at?: string; in_minutes?: number },
+	now: number,
+): Schedule {
+	const given = [params.every_minutes, params.daily_at, params.at, params.in_minutes].filter(
+		(value) => value !== undefined,
+	);
+	if (given.length !== 1) throw new Error("Give exactly one of every_minutes, daily_at, at or in_minutes.");
+	if (params.in_minutes !== undefined) {
+		if (params.in_minutes < 1 || params.in_minutes > MAX_IN_MINUTES) {
+			throw new Error(`in_minutes must be from 1 to ${MAX_IN_MINUTES}.`);
+		}
+		return { kind: "once", at: now + params.in_minutes * 60_000 };
+	}
 	if (params.every_minutes !== undefined) {
 		if (params.every_minutes < MIN_INTERVAL_MINUTES)
 			throw new Error(`every_minutes must be >= ${MIN_INTERVAL_MINUTES}.`);
@@ -34,7 +47,14 @@ export function createScheduleTool(scheduler: Scheduler, chatId: number): ToolDe
 			prompt: Type.Optional(Type.String({ description: "Self-contained instruction to run, for create" })),
 			every_minutes: Type.Optional(Type.Integer({ description: "Repeat interval in minutes" })),
 			daily_at: Type.Optional(Type.String({ description: "Daily wall-clock time HH:MM" })),
-			at: Type.Optional(Type.String({ description: "One-off ISO 8601 date-time with offset" })),
+			at: Type.Optional(
+				Type.String({ description: "One-off ISO 8601 date-time with offset, for a specific clock time" }),
+			),
+			in_minutes: Type.Optional(
+				Type.Integer({
+					description: "One-off, this many minutes from now. Use for 'in N minutes' or 'in N hours'",
+				}),
+			),
 			id: Type.Optional(Type.String({ description: "Job id, for cancel" })),
 		}),
 		async execute(_id, params) {
@@ -55,7 +75,7 @@ export function createScheduleTool(scheduler: Scheduler, chatId: number): ToolDe
 			if (!params.prompt) throw new Error("create needs prompt.");
 			if (scheduler.list(chatId).length >= MAX_JOBS_PER_CHAT)
 				throw new Error(`Limit is ${MAX_JOBS_PER_CHAT} tasks.`);
-			const job = scheduler.create(chatId, params.prompt, toSchedule(params));
+			const job = scheduler.create(chatId, params.prompt, toSchedule(params, scheduler.now()));
 			const next = new Date(job.nextRunAt).toLocaleString("en-GB", { timeZone: scheduler.timeZone });
 			return text(`Created ${job.id} (${describeSchedule(job.schedule, scheduler.timeZone)}). Next run: ${next}.`);
 		},

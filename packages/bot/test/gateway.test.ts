@@ -38,6 +38,7 @@ describe("Gateway with a real agent session", () => {
 				model,
 				allowShell: false,
 				systemPrompt: () => "You are a test bot.",
+				timeZone: "UTC",
 			}),
 			fetchImage: (async (url: string | URL | Request) =>
 				String(url) === "https://cdn.example.com/bridge.png"

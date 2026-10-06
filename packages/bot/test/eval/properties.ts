@@ -92,20 +92,19 @@ export interface Property {
 /** Property checks: what must never happen, for any generated journey. */
 export const PROPERTIES: Property[] = [
 	{
-		name: "P1: a session's request always starts with its previous request (the prefix stays append-only)",
-		expectFail: "PR A",
+		name: "P1: a session's request starts with its previous request, except once at each restart",
 		property: fc.asyncProperty(anyJourney, async (journey) => {
-			assert.equal((await runJourney(journey)).totals.prefixBreaks, 0);
+			const { totals, restarts } = await runJourney(journey);
+			assert.ok(totals.prefixBreaks <= restarts, `${totals.prefixBreaks} breaks, ${restarts} restarts`);
 		}),
 	},
 	{
-		name: "P2: a stored transcript never gets a system message after its first",
-		expectFail: "PR A",
+		name: "P2: a stored transcript gets a system message only when it starts or reopens after a restart",
 		property: fc.asyncProperty(anyJourney, async (journey) => {
-			const { totals, sessionPrompts } = await runJourney(journey);
+			const { totals, sessionPrompts, restarts } = await runJourney(journey);
 			assert.ok(
-				totals.systemMessages <= sessionPrompts.length,
-				`${totals.systemMessages} system messages in ${sessionPrompts.length} sessions`,
+				totals.systemMessages <= sessionPrompts.length + restarts,
+				`${totals.systemMessages} system messages, ${sessionPrompts.length} sessions, ${restarts} restarts`,
 			);
 		}),
 	},

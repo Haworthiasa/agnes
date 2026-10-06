@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { createBotAgentFactory } from "./agent.ts";
+import { formatLocalTime } from "./clock.ts";
 import { Gateway } from "./gateway.ts";
 import { JobStore, Scheduler } from "./scheduler.ts";
 import { createMemoryTool, MemoryStore } from "./tools/memory.ts";
@@ -35,8 +36,8 @@ export function chatDir(dataDir: string, chatId: number): string {
 	return join(dataDir, "chats", String(chatId));
 }
 
-function persona(timeZone: string, now: number): string {
-	const localTime = new Date(now).toLocaleString("en-GB", { timeZone, dateStyle: "full", timeStyle: "short" });
+/** The same text for every chat and every session, so it stays at the front of the provider's prompt cache. */
+function persona(timeZone: string): string {
 	return [
 		"You are Agnes, a personal assistant chatting on Telegram.",
 		"Reply in the user's language. Keep replies short. Use plain text, not Markdown tables.",
@@ -46,8 +47,8 @@ function persona(timeZone: string, now: number): string {
 		"Cite only URLs that appeared in tool results. Do not add dates, caveats or notes about sources unless the user asks.",
 		"Read links the user sends with web_fetch.",
 		"Show pictures by putting ![short caption](image URL) on its own line where the picture belongs; each one is sent as a photo at that point of your reply. Use only image URLs listed as Image: in tool results or sent by the user, at most 2 per reply. When the user sends a link to a post or article, show its main picture. Otherwise show one only when it helps the answer (a place, product, person or chart).",
-		"Use schedule for reminders and recurring tasks such as a daily brief.",
-		`Current time: ${localTime} (${timeZone}).`,
+		`Use schedule for reminders and daily briefs. Use in_minutes for "in N minutes or hours", at only for a clock time. Times use ${timeZone}.`,
+		"The last line of this prompt gives the session start time. A user message may start with [Now: ...], the current time, shown only after a 30-minute pause or on a new date. Never repeat it.",
 	].join("\n");
 }
 
@@ -69,8 +70,11 @@ export function createBot(options: BotOptions): Bot {
 		modelRuntime: options.modelRuntime,
 		model: options.model,
 		allowShell: options.allowShell,
+		now,
+		timeZone: options.timeZone,
+		// Built once per session. Memory goes before the session start time, which changes most often.
 		systemPrompt: (chatId) =>
-			`${options.promptSalt ? `${options.promptSalt}\n` : ""}${persona(options.timeZone, now())}\n\n${memory(chatId).render()}`,
+			`${options.promptSalt ? `${options.promptSalt}\n` : ""}${persona(options.timeZone)}\n\n${memory(chatId).render()}\n\nSession started: ${formatLocalTime(now(), options.timeZone)} (${options.timeZone}).`,
 		tools: (chatId) => [...webTools, createMemoryTool(memory(chatId)), createScheduleTool(scheduler, chatId)],
 	});
 	const gateway = new Gateway({

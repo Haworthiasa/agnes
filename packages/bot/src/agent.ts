@@ -11,6 +11,7 @@ import {
 	type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { verifyReply } from "./citations.ts";
+import { clockTag } from "./clock.ts";
 import type { ChatAgent, ChatAgentFactory } from "./types.ts";
 
 // pi's file tools accept absolute paths, so they can reach secrets outside the workspace.
@@ -26,8 +27,16 @@ export interface BotAgentFactoryOptions {
 	 * not confined to the workspace, so an injected page could read local secrets and send them out via web_fetch.
 	 */
 	allowShell: boolean;
-	/** Re-read before every turn, so memory written in one turn reaches the next. */
+	/**
+	 * Called once when a session starts, and the text is kept for the whole session. Memory written during the
+	 * session reaches the next session. A prompt that changes between turns rewrites the head of every request and
+	 * the provider's prompt cache starts over.
+	 */
 	systemPrompt: (chatId: number) => string;
+	/** Clock for the `[Now: ...]` tag. Defaults to Date.now. */
+	now?: () => number;
+	/** Time zone of the `[Now: ...]` tag. */
+	timeZone: string;
 	tools?: (chatId: number) => ToolDefinition[];
 }
 
@@ -87,11 +96,26 @@ function replyText(message: AssistantMessage | undefined): string {
 	return text;
 }
 
+/** One line per turn: tokens, how many came from the provider's cache, and the cost. */
+function logUsage(chatId: number, messages: Array<{ role: string }>): void {
+	const turns = messages.filter((message): message is AssistantMessage => message.role === "assistant");
+	const sum = (pick: (turn: AssistantMessage) => number) => turns.reduce((total, turn) => total + pick(turn), 0);
+	const input = sum((turn) => turn.usage.input);
+	const cached = sum((turn) => turn.usage.cacheRead);
+	const prompt = input + cached + sum((turn) => turn.usage.cacheWrite);
+	const percent = prompt === 0 ? 0 : Math.round((cached / prompt) * 100);
+	console.log(
+		`[usage] chat ${chatId} calls ${turns.length} prompt ${prompt} cached ${cached} (${percent}%) output ${sum((turn) => turn.usage.output)} cost $${sum((turn) => turn.usage.cost.total).toFixed(5)}`,
+	);
+}
+
 export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgentFactory {
 	const workspace = join(options.dataDir, "workspace");
 	mkdirSync(workspace, { recursive: true });
 
+	const now = options.now ?? Date.now;
 	return async (chatId, { fresh, ephemeral }) => {
+		const frozenPrompt = options.systemPrompt(chatId);
 		const sessionDir = join(options.dataDir, "chats", String(chatId), "sessions");
 		mkdirSync(sessionDir, { recursive: true });
 		const customTools = options.tools?.(chatId) ?? [];
@@ -101,7 +125,7 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 			agentDir: join(options.dataDir, "agent"),
 			modelRuntime: options.modelRuntime,
 			model: options.model,
-			resourceLoader: createBotResourceLoader(() => options.systemPrompt(chatId)),
+			resourceLoader: createBotResourceLoader(() => frozenPrompt),
 			settingsManager: SettingsManager.inMemory({ retry: { enabled: true, maxRetries: 2 } }),
 			sessionManager: ephemeral
 				? SessionManager.inMemory(workspace)
@@ -116,18 +140,23 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 		session.agent.transformContext = async (messages, signal) =>
 			withoutEarlierImages(transformContext ? await transformContext(messages, signal) : messages);
 
+		// The model last read the clock in the prompt's session start line.
+		let clockSeenMs = now();
 		const agent: ChatAgent = {
-			async prompt(text, images) {
+			async prompt(input, images) {
+				const tag = clockTag(clockSeenMs, now(), options.timeZone);
+				if (tag) clockSeenMs = now();
+				const text = tag ? `${tag}\n${input}` : input;
 				if (images?.length && !session.model?.input.includes("image")) {
 					throw new Error(`Model ${session.model?.id ?? "hiện tại"} không đọc được ảnh.`);
 				}
-				// Re-applying the loadout rebuilds the system prompt from the loader, picking up new memory.
-				session.setActiveToolsByName(session.getActiveToolNames());
+				const before = session.messages.length;
 				await session.prompt(text, { source: "rpc", images });
+				logUsage(chatId, session.messages.slice(before));
 				const last = session.messages.findLast((message) => message.role === "assistant");
 				// A URL the model did not get from a tool, the user or memory is not a source; it never reaches the user.
 				const { dropped, ...reply } = verifyReply(replyText(last as AssistantMessage | undefined), [
-					options.systemPrompt(chatId),
+					frozenPrompt,
 					...session.messages.map(seenText),
 				]);
 				for (const url of dropped) console.warn(`[web] dropped unverified citation ${url}`);
