@@ -1,3 +1,4 @@
+import type { Series } from "./guardrails.ts";
 import type { JourneyResult } from "./harness.ts";
 import { compareSamples, type Verdict } from "./stats.ts";
 
@@ -17,20 +18,26 @@ export interface RunMeta {
 	seed: number | null;
 	startedAt: string;
 	durationMs: number;
+	/** What a baseline must share with a run for a comparison to mean anything. Absent in reports saved before it existed. */
+	series?: Series;
+	/** Characters of the frozen prompt and tool definitions, divided by 4. */
+	fixedOverheadTokens?: number;
 }
 
 export interface RunReport {
 	meta: RunMeta;
 	checks: CheckResult[];
 	/** Journey results without bulky text, so a report stays small. */
-	journeys: Array<Omit<JourneyResult, "sessionPrompts" | "toolSchemas">>;
+	journeys: Array<Omit<JourneyResult, "sessionPrompts" | "toolSchemas" | "toolDefinitions">>;
 }
 
 export function buildReport(meta: RunMeta, checks: CheckResult[], journeys: JourneyResult[]): RunReport {
 	return {
 		meta,
 		checks,
-		journeys: journeys.map(({ sessionPrompts: _prompts, toolSchemas: _schemas, ...rest }) => rest),
+		journeys: journeys.map(
+			({ sessionPrompts: _prompts, toolSchemas: _schemas, toolDefinitions: _definitions, ...rest }) => rest,
+		),
 	};
 }
 

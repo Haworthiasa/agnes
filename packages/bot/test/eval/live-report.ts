@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { type Comparison, costUnits, POLICY, type Series } from "./guardrails.ts";
 import type { LiveRun, LiveTurn, PriceSnapshot } from "./live.ts";
-import { compareSamples, mean, percentile, stdev, type Verdict } from "./stats.ts";
+import { compareSamples, fisherDropP, mean, percentile, stdev, type Verdict } from "./stats.ts";
 
 export interface LiveCheck {
 	name: string;
@@ -202,6 +203,10 @@ export interface LiveReport {
 		durationMs: number;
 		costUsd: number;
 		price: PriceSnapshot;
+		/** Absent in reports saved before series existed. */
+		series?: Series;
+		/** Characters of the frozen prompt and tool definitions, divided by 4. */
+		fixedOverheadTokens?: number;
 	};
 	checks: LiveCheckStat[];
 	journeys: LiveJourneyStats[];
@@ -299,6 +304,8 @@ export function renderLiveMarkdown(report: LiveReport): string {
 		`# Live eval report: ${meta.model}`,
 		"",
 		`- Commit: ${meta.sha}${meta.dirty ? " (dirty)" : ""}`,
+		...(meta.series ? [`- Series: ${JSON.stringify(meta.series)}`] : []),
+		...(meta.fixedOverheadTokens === undefined ? [] : [`- Fixed overhead: ${meta.fixedOverheadTokens} tokens`]),
 		`- Repeats: ${meta.repeats}, started ${meta.startedAt}, took ${(meta.durationMs / 1000).toFixed(0)} s`,
 		`- Spend: $${meta.costUsd.toFixed(4)} at $${meta.price.inputPerM}/M input, $${meta.price.outputPerM}/M output, $${meta.price.cacheReadPerM}/M cache read, $${meta.price.cacheWritePerM}/M cache write`,
 		"",
@@ -380,4 +387,69 @@ export function renderLiveComparison(rows: LiveComparisonRow[]): string {
 			`| ${row.journey} | ${row.metric} | ${fixed(row.before, DIGITS[row.metric])} | ${fixed(row.after, DIGITS[row.metric])} | ${row.verdict} |`,
 		);
 	return `${lines.join("\n")}\n`;
+}
+
+/** Mean CU per user turn of one journey, over its runs. `turns` is the number of steps the journey plays. */
+export function cuPerTurn(journey: LiveJourneyStats, turns: number): number {
+	const perRun = journey.metrics.costUsd.map((_, run) =>
+		costUnits({
+			input: journey.metrics.uncachedInput[run] ?? 0,
+			cacheRead: journey.metrics.cacheRead[run] ?? 0,
+			cacheWrite: journey.metrics.cacheWrite[run] ?? 0,
+			output: journey.metrics.output[run] ?? 0,
+		}),
+	);
+	return mean(perRun) / turns;
+}
+
+export interface LiveComparisonOptions {
+	/** Steps per journey, by journey id. */
+	turnsByJourney: Record<string, number>;
+	/** Journeys the change targets. Every other journey is a guardrail. */
+	affected: string[];
+	/** Fixed overhead at the reference sha, when known. */
+	fixedOverheadReference?: number;
+}
+
+/**
+ * Turns two live reports into the numbers `verdict` needs. The gain of a feature is the change of the mean check
+ * pass rate; with 3 repeats it has no interval, so its lower bound equals the difference. CU per turn and step time
+ * are pooled over the journeys the change does not target.
+ */
+export function liveComparison(before: LiveReport, after: LiveReport, options: LiveComparisonOptions): Comparison {
+	const shared = after.journeys.filter(
+		(journey) => !options.affected.includes(journey.id) && before.journeys.some((base) => base.id === journey.id),
+	);
+	const baseOf = (id: string) => before.journeys.find((journey) => journey.id === id) as LiveJourneyStats;
+	const turnsOf = (id: string) => options.turnsByJourney[id] ?? 1;
+	const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+	const cuBefore = sum(shared.map((journey) => cuPerTurn(baseOf(journey.id), turnsOf(journey.id))));
+	const cuAfter = sum(shared.map((journey) => cuPerTurn(journey, turnsOf(journey.id))));
+	const timeBefore = mean(shared.flatMap((journey) => baseOf(journey.id).stepWallMs));
+	const timeAfter = mean(shared.flatMap((journey) => journey.stepWallMs));
+
+	const pairs = after.checks.flatMap((check) => {
+		const base = before.checks.find((candidate) => candidate.name === check.name);
+		return base ? [{ base, check }] : [];
+	});
+	const rate = (check: LiveCheckStat) => (check.runs === 0 ? 0 : check.passes / check.runs);
+	const delta = mean(pairs.map(({ base, check }) => rate(check) - rate(base)));
+	const regressionDrops = pairs.filter(
+		({ base, check }) =>
+			!check.expectFail &&
+			fisherDropP(base.passes, base.runs, check.passes, check.runs) < POLICY.significance.fisherP,
+	).length;
+
+	const overheadBefore = before.meta.fixedOverheadTokens;
+	const overheadAfter = after.meta.fixedOverheadTokens;
+	return {
+		gain: pairs.length === 0 ? undefined : { delta, lower: delta },
+		regressionDrops,
+		unaffectedCuPerTurnChange: cuBefore === 0 ? 0 : cuAfter / cuBefore - 1,
+		unaffectedTimeChange: timeBefore === 0 ? 0 : timeAfter / timeBefore - 1,
+		fixedOverhead:
+			overheadBefore === undefined || overheadAfter === undefined
+				? undefined
+				: { before: overheadBefore, after: overheadAfter, reference: options.fixedOverheadReference },
+	};
 }

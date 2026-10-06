@@ -35,3 +35,23 @@ export function compareSamples(a: number[], b: number[], lowerIsBetter: boolean,
 	}
 	return difference < 0 === lowerIsBetter ? "improved" : "regressed";
 }
+
+function logChoose(n: number, k: number): number {
+	let total = 0;
+	for (let index = 1; index <= k; index++) total += Math.log(n - k + index) - Math.log(index);
+	return total;
+}
+
+/**
+ * One-sided Fisher exact test for a drop: the probability that arm B has at most `passesB` passes, given the
+ * totals of both arms, if the pass rate were the same. A small value means B passes less often than A.
+ */
+export function fisherDropP(passesA: number, runsA: number, passesB: number, runsB: number): number {
+	const passes = passesA + passesB;
+	const total = runsA + runsB;
+	let p = 0;
+	for (let k = Math.max(0, passes - runsA); k <= Math.min(passesB, runsB, passes); k++) {
+		p += Math.exp(logChoose(runsB, k) + logChoose(runsA, passes - k) - logChoose(total, passes));
+	}
+	return Math.min(1, p);
+}

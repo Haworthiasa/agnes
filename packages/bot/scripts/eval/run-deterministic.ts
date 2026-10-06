@@ -4,6 +4,8 @@
 //
 // Run from packages/bot:
 //   node --import ../coding-agent/src/experimental/source-resolver.ts scripts/eval/run-deterministic.ts [--save-baseline] [--compare eval/baselines/deterministic.json]
+//
+// With --compare, the baseline must be in the same series; otherwise the run exits 2.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -11,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { ZAI_PROFILE } from "../../test/eval/cache-sim.ts";
 import { evaluateChecks, type Results } from "../../test/eval/checks.ts";
+import { assertSameSeries, fixedOverheadTokens, type Series, scenarioHashOf, seriesOf } from "../../test/eval/guardrails.ts";
 import { runJourney } from "../../test/eval/harness.ts";
 import { JOURNEYS } from "../../test/eval/journeys.ts";
 import { evaluateProperties, SEED } from "../../test/eval/properties.ts";
@@ -27,6 +30,23 @@ const { values: flags } = parseArgs({
 });
 const botRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const git = (...args: string[]) => execFileSync("git", args, { cwd: botRoot, encoding: "utf8" }).trim();
+
+const series: Series = {
+	agentModel: "scripted",
+	graderModel: "none",
+	scenarioHash: scenarioHashOf(JOURNEYS),
+	cacheProfile: ZAI_PROFILE.name,
+	thinkingLevel: "none",
+};
+const before = flags.compare ? (JSON.parse(readFileSync(resolve(botRoot, flags.compare), "utf8")) as RunReport) : undefined;
+if (before) {
+	try {
+		assertSameSeries(seriesOf(before.meta), series);
+	} catch (error) {
+		process.stderr.write(`${(error as Error).message}\n`);
+		process.exit(2);
+	}
+}
 
 const startedAt = new Date();
 const results: Results = {};
@@ -55,8 +75,7 @@ writeFileSync(join(dir, "report.md"), markdown);
 process.stdout.write(markdown);
 process.stdout.write(`\nReport: ${dir}\n`);
 
-if (flags.compare) {
-	const before = JSON.parse(readFileSync(resolve(botRoot, flags.compare), "utf8")) as RunReport;
+if (before) {
 	process.stdout.write(`\n## Comparison with ${flags.compare} (${before.meta.sha})\n\n${renderComparison(compareReports(before, report))}`);
 }
 if (flags["save-baseline"]) {
