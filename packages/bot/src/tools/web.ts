@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { defineTool, type ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { defineTool, type ExtensionToolContext, type ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { type CallToolResult, McpClient, StreamableHttpTransport, toLlmContent } from "@earendil-works/pi-mcp";
 import { Type } from "typebox";
 import { normalizeUrl } from "../citations.ts";
@@ -332,6 +332,82 @@ export class DuckDuckGoBackend implements WebBackend {
 }
 
 /** Reads pages straight from their origin. Sees what a browser without JavaScript sees. */
+interface FirecrawlSearchItem {
+	url?: string;
+	title?: string;
+	description?: string;
+	markdown?: string;
+	metadata?: { publishedTime?: string };
+}
+
+interface FirecrawlScrape {
+	markdown?: string;
+	metadata?: { title?: string; publishedTime?: string; sourceURL?: string };
+}
+
+/** Firecrawl's keyless cloud tier, as Hermes Agent uses it: REST search and scrape without an Authorization header. */
+export class FirecrawlBackend implements WebBackend {
+	readonly name = "firecrawl";
+	private readonly fetchFn: typeof fetch;
+	private readonly apiUrl: string;
+
+	constructor(fetchFn: typeof fetch = fetch, apiUrl = "https://api.firecrawl.dev") {
+		this.fetchFn = fetchFn;
+		this.apiUrl = apiUrl;
+	}
+
+	async search(request: SearchRequest, signal?: AbortSignal): Promise<WebResult[]> {
+		const data = await this.post<{ web?: FirecrawlSearchItem[] }>(
+			"/v2/search",
+			{ query: request.queries[0] ?? request.objective, limit: 6 },
+			signal,
+		);
+		return (data.web ?? [])
+			.filter((item) => item.url)
+			.map((item) => {
+				const excerpt = item.markdown ?? item.description ?? "";
+				return {
+					url: item.url as string,
+					title: item.title ?? "",
+					published: item.metadata?.publishedTime,
+					excerpts: excerpt ? [excerpt] : [],
+				};
+			});
+	}
+
+	fetch(request: FetchRequest, signal?: AbortSignal): Promise<FetchedPage[]> {
+		return Promise.all(
+			request.urls.map(async (url) => {
+				try {
+					const data = await this.post<FirecrawlScrape>("/v2/scrape", { url, formats: ["markdown"] }, signal);
+					return {
+						url,
+						title: data.metadata?.title,
+						published: data.metadata?.publishedTime,
+						text: data.markdown ?? "",
+					};
+				} catch (error) {
+					return { url, text: "", error: (error as Error).message };
+				}
+			}),
+		);
+	}
+
+	private async post<T>(path: string, body: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+		const response = await this.fetchFn(`${this.apiUrl}${path}`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(body),
+			signal: timeoutSignal(signal, 45_000),
+		});
+		const payload = (await response.json().catch(() => ({}))) as { success?: boolean; data?: T; error?: string };
+		if (!response.ok || !payload.success || !payload.data) {
+			throw new Error(`HTTP ${response.status}${payload.error ? `: ${payload.error.slice(0, 200)}` : ""}`);
+		}
+		return payload.data;
+	}
+}
+
 export class DirectFetchBackend implements WebBackend {
 	readonly name = "direct";
 	private readonly fetchFn: typeof fetch;
@@ -369,9 +445,13 @@ export class DirectFetchBackend implements WebBackend {
 
 export function createDefaultWebBackends(): WebBackends {
 	const parallel = createParallelBackend();
+	const firecrawl = new FirecrawlBackend();
 	const exa = createExaBackend();
 	// Exa's fetch drops tables, so it reads pages last.
-	return { search: [parallel, exa, new DuckDuckGoBackend()], fetch: [parallel, new DirectFetchBackend(), exa] };
+	return {
+		search: [parallel, firecrawl, exa, new DuckDuckGoBackend()],
+		fetch: [parallel, firecrawl, new DirectFetchBackend(), exa],
+	};
 }
 
 const RATE_LIMITED = /\b429\b|rate.?limit|too many requests/i;
@@ -494,6 +574,27 @@ export function formatSearchResults(results: WebResult[]): string {
 		.join("\n\n");
 }
 
+/** web_fetch calls allowed per user turn. Each one costs a model round trip and several seconds. */
+export const MAX_FETCHES_PER_TURN = 4;
+
+/** Position of this web_fetch call among the web_fetch calls since the last user message, 1-based. */
+function fetchOrdinal(ctx: ExtensionToolContext | undefined, toolCallId: string): number | undefined {
+	const branch = ctx?.sessionManager?.getBranch();
+	if (!branch) return undefined;
+	const lastUser = branch.findLastIndex((entry) => entry.type === "message" && entry.message.role === "user");
+	const ids = branch
+		.slice(lastUser + 1)
+		.flatMap((entry) =>
+			entry.type === "message" && entry.message.role === "assistant"
+				? entry.message.content.flatMap((part) =>
+						part.type === "toolCall" && part.name === "web_fetch" ? [part.id] : [],
+					)
+				: [],
+		);
+	const index = ids.indexOf(toolCallId);
+	return index === -1 ? undefined : index + 1;
+}
+
 function usable(page: FetchedPage): boolean {
 	// A JavaScript-only page comes back as a few hundred characters of chrome.
 	return !page.error && page.text.trim().length >= 200;
@@ -541,7 +642,13 @@ export function createWebTools(
 			urls: Type.Array(Type.String(), { minItems: 1, maxItems: 5 }),
 			objective: Type.Optional(Type.String({ description: "The fact or section you need from these pages" })),
 		}),
-		async execute(_id, params, signal) {
+		async execute(toolCallId, params, signal, _onUpdate, ctx) {
+			const ordinal = fetchOrdinal(ctx, toolCallId);
+			if (ordinal !== undefined && ordinal > MAX_FETCHES_PER_TURN) {
+				throw new Error(
+					`web_fetch limit reached (${MAX_FETCHES_PER_TURN} per message). Answer from the pages already read.`,
+				);
+			}
 			const maxCharsPerPage = Math.floor(MAX_RESULT_CHARS / params.urls.length);
 			const pages = new Map<string, FetchedPage & { backend?: string }>();
 			let pending = params.urls;

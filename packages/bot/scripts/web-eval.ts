@@ -6,7 +6,7 @@
 // E2E mode (--e2e): asks the real bot through the verify-agnes skill and scores the reply.
 //
 // Run from packages/bot:
-//   node --import ../coding-agent/src/experimental/source-resolver.ts scripts/web-eval.ts [--repeats 2] [--delay 1500] [--only id,id] [--out file.json]
+//   node --import ../coding-agent/src/experimental/source-resolver.ts scripts/web-eval.ts [--repeats 2] [--delay 1500] [--configs chain,firecrawl] [--only id,id] [--out file.json]
 //   node --import ../coding-agent/src/experimental/source-resolver.ts scripts/web-eval.ts --e2e [--only id,id] [--out file.json]
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -50,6 +50,7 @@ const { values: flags } = parseArgs({
 		e2e: { type: "boolean", default: false },
 		repeats: { type: "string", default: "1" },
 		delay: { type: "string", default: "1500" },
+		configs: { type: "string" },
 		only: { type: "string" },
 		out: { type: "string" },
 	},
@@ -142,6 +143,8 @@ async function retrieval() {
 			fetch: Boolean(backend.fetch),
 		})),
 	];
+	const selected = flags.configs?.split(",");
+	if (selected) configs.splice(0, configs.length, ...configs.filter((config) => selected.includes(config.name)));
 	const repeats = Number(flags.repeats);
 	const rows: Array<{ config: string; id: string; kind: string; op: "search" | "fetch"; repeat: number } & ToolRun> = [];
 	for (let repeat = 1; repeat <= repeats; repeat++) {

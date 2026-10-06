@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createBotAgentFactory } from "../src/agent.ts";
 import {
 	createWebTools,
+	FirecrawlBackend,
 	fitToObjective,
 	htmlToText,
+	MAX_FETCHES_PER_TURN,
 	McpWebBackend,
 	parseDuckDuckGoLite,
 	parseExaSearch,
@@ -255,6 +257,114 @@ describe("parseExaSearch", () => {
 				published: "2026-09-21T00:00:00.000Z",
 				excerpts: ["Notable changes"],
 			},
+		]);
+	});
+});
+
+describe("FirecrawlBackend", () => {
+	function fakeFirecrawl(calls: Array<{ path: string; body: unknown }>): typeof fetch {
+		return async (input, init) => {
+			const path = new URL(String(input)).pathname;
+			calls.push({ path, body: JSON.parse(String(init?.body)) });
+			const data =
+				path === "/v2/search"
+					? {
+							web: [
+								{
+									url: "https://nodejs.org/en/about/previous-releases",
+									title: "Node.js Releases",
+									description: "| v26 | | Current |",
+								},
+							],
+						}
+					: {
+							markdown: "# Node.js Releases\n| v24 | Krypton | Active LTS |",
+							metadata: { title: "Node.js — Node.js Releases" },
+						};
+			return new Response(JSON.stringify({ success: true, data }), { status: 200 });
+		};
+	}
+
+	it("searches with the first query and scrapes pages as markdown, without an API key", async () => {
+		const calls: Array<{ path: string; body: unknown }> = [];
+		const backend = new FirecrawlBackend(fakeFirecrawl(calls));
+		expect(await backend.search({ objective: "latest node", queries: ["Node.js latest release"] })).toEqual([
+			{
+				url: "https://nodejs.org/en/about/previous-releases",
+				title: "Node.js Releases",
+				published: undefined,
+				excerpts: ["| v26 | | Current |"],
+			},
+		]);
+		expect(
+			await backend.fetch({ urls: ["https://nodejs.org/en/about/previous-releases"], maxCharsPerPage: 20_000 }),
+		).toEqual([
+			{
+				url: "https://nodejs.org/en/about/previous-releases",
+				title: "Node.js — Node.js Releases",
+				published: undefined,
+				text: "# Node.js Releases\n| v24 | Krypton | Active LTS |",
+			},
+		]);
+		expect(calls).toEqual([
+			{ path: "/v2/search", body: { query: "Node.js latest release", limit: 6 } },
+			{ path: "/v2/scrape", body: { url: "https://nodejs.org/en/about/previous-releases", formats: ["markdown"] } },
+		]);
+	});
+
+	it("reports a throttled call as HTTP 429 so the chain treats it as a rate limit", async () => {
+		const throttled: typeof fetch = async () =>
+			new Response(JSON.stringify({ success: false, error: "Rate limit exceeded" }), { status: 429 });
+		await expect(new FirecrawlBackend(throttled).search({ objective: "o", queries: ["q"] })).rejects.toThrow(
+			"HTTP 429: Rate limit exceeded",
+		);
+	});
+});
+
+describe("web_fetch limit", () => {
+	let runtime: FauxRuntime;
+	afterEach(() => runtime.cleanup());
+
+	it(`allows ${MAX_FETCHES_PER_TURN} fetches per user message, counting parallel calls in order`, async () => {
+		runtime = await createFauxRuntime();
+		const reader: WebBackend = {
+			name: "static",
+			fetch: async ({ urls }) => urls.map((url) => ({ url, text: "x".repeat(300) })),
+		};
+		const fetchCall = (n: number) => fauxToolCall("web_fetch", { urls: [`https://example.com/${n}`] });
+		const outcomes: boolean[][] = [];
+		const record = (context: TranscriptContext) => {
+			const results = context.messages.filter((message) => message.role === "toolResult");
+			outcomes.push(results.map((result) => result.role === "toolResult" && result.isError));
+		};
+		runtime.faux.setResponses([
+			fauxAssistantMessage([fetchCall(1), fetchCall(2), fetchCall(3)], { stopReason: "toolUse" }),
+			fauxAssistantMessage([fetchCall(4), fetchCall(5), fetchCall(6)], { stopReason: "toolUse" }),
+			(context) => {
+				record(context);
+				return fauxAssistantMessage("done");
+			},
+			fauxAssistantMessage([fetchCall(7)], { stopReason: "toolUse" }),
+			(context) => {
+				record(context);
+				return fauxAssistantMessage("done again");
+			},
+		]);
+		const createAgent = createBotAgentFactory({
+			dataDir: runtime.dataDir,
+			modelRuntime: runtime.modelRuntime,
+			model: runtime.faux.getModel(),
+			allowShell: false,
+			systemPrompt: () => "test",
+			tools: () => createWebTools([], [reader]),
+		});
+		const agent = await createAgent(1, { fresh: true });
+		await agent.prompt("read six pages");
+		await agent.prompt("read one more");
+		agent.dispose();
+		expect(outcomes).toEqual([
+			[false, false, false, false, true, true],
+			[false, false, false, false, true, true, false],
 		]);
 	});
 });
