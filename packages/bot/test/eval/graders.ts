@@ -328,7 +328,7 @@ export interface JudgeOptions {
 }
 
 /**
- * A judge that asks `model` through the runtime, which resolves its credentials. It asks at temperature 0 and caches
+ * A judge that asks `model` through the runtime, which resolves its credentials. It asks at temperature 0 with low thinking and caches
  * each answer on disk by a hash of the model and the prompt, so a rerun on the same transcript costs nothing.
  */
 export function createJudge(options: JudgeOptions): Judge {
@@ -342,7 +342,9 @@ export function createJudge(options: JudgeOptions): Judge {
 		const message = await options.modelRuntime.completeSimple(
 			options.model,
 			{ messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
-			{ temperature: 0, maxTokens: 1000 },
+			// A model that always thinks (glm-5.3-flash) rejects a request that turns thinking off, so ask for the lowest level.
+			// Thinking tokens count against maxTokens, so leave room for the answer after them.
+			{ temperature: 0, reasoning: "low", maxTokens: 4000 },
 		);
 		if (message.stopReason === "error") throw new Error(message.errorMessage ?? "the model returned an error");
 		const text = message.content.map((part) => (part.type === "text" ? part.text : "")).join("");
