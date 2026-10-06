@@ -100,6 +100,43 @@ export const LIVE_CHECKS: LiveCheck[] = [
 				/^\s*(?:always|never|luôn|hãy|đừng)\b/im,
 			),
 	},
+	{
+		name: "j8: the routine is saved as a skill with the format and the closing line",
+		journeyId: "j8-skill-routine",
+		run: (run) => {
+			const body = run.skills["111"]?.map((skill) => skill.body).join("\n") ?? "";
+			assert.match(body, /•/);
+			assert.match(body, /ngày mới|một ngày tốt lành/);
+		},
+	},
+	{
+		name: "j8: the next-day request reads the skill and follows its format",
+		journeyId: "j8-skill-routine",
+		run: (run) => {
+			const turn = run.turns[2] as LiveTurn;
+			assert.ok(turn.toolCalls.includes("skill_view"), "skill_view was not called");
+			assert.match(turn.reply, /•/);
+			assert.match(turn.reply, /Chúc bạn ngày mới/);
+		},
+	},
+	{
+		name: "j8: the correction changes the saved skill",
+		journeyId: "j8-skill-routine",
+		run: (run) => assert.match(run.skills["111"]?.map((skill) => skill.body).join("\n") ?? "", /một ngày tốt lành/),
+	},
+	{
+		name: "j8: the scheduled job names the routine and its run follows the corrected skill",
+		journeyId: "j8-skill-routine",
+		run: (run) => {
+			assert.match((run.turns[4] as LiveTurn).jobs.at(-1)?.prompt ?? "", /bản tin|brief/i);
+			assert.match((run.turns[5] as LiveTurn).reply, /Chúc bạn một ngày tốt lành/);
+		},
+	},
+	{
+		name: "j9: neither a one-off request nor an override routine becomes a skill",
+		journeyId: "j9-no-skill",
+		run: (run) => assert.deepEqual(run.skills["111"], []),
+	},
 ];
 
 export const METRICS = [

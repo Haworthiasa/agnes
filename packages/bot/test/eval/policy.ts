@@ -86,6 +86,24 @@ function decide(context: TranscriptContext, clock: () => number, log: PolicyLog)
 	const recall = /chuyện cũ|hôm qua/i.test(text);
 	if (recall && declared(context, "session_search")) return toolCall("session_search", { query: text.slice(0, 40) });
 
+	const schedule = /đặt lịch hằng ngày lúc (\d\d:\d\d)/i.exec(text);
+	if (schedule?.[1] && declared(context, "schedule")) {
+		return toolCall("schedule", {
+			action: "create",
+			prompt: "Chạy quy trình bản tin sáng về chủ đề công nghệ",
+			daily_at: schedule[1],
+		});
+	}
+
+	if (/^sửa quy trình:/i.test(text) && declared(context, "skill_manage")) {
+		return toolCall("skill_manage", {
+			action: "patch",
+			name: "daily-brief",
+			old_text: "Chúc bạn ngày mới",
+			new_text: "Chúc bạn một ngày tốt lành",
+		});
+	}
+
 	const skill = /^lưu quy trình:\s*(.+)$/is.exec(text);
 	if (skill?.[1] && declared(context, "skill_manage")) {
 		return toolCall("skill_manage", {
@@ -95,6 +113,8 @@ function decide(context: TranscriptContext, clock: () => number, log: PolicyLog)
 			body: skill[1].trim(),
 		});
 	}
+
+	if (/bản tin/i.test(text) && declared(context, "skill_view")) return toolCall("skill_view", { name: "daily-brief" });
 
 	return fauxAssistantMessage(plainReply(text));
 }

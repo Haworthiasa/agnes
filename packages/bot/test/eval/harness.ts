@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { chatDir, createBot } from "../../src/bot.ts";
+import { SkillStore } from "../../src/skills.ts";
 import { createFauxRuntime, FakeTransport, type FauxRuntime } from "../helpers.ts";
 import { CacheSimulator, type ProviderProfile, ZAI_PROFILE } from "./cache-sim.ts";
 import { drive } from "./drive.ts";
@@ -46,6 +47,8 @@ export interface JourneyResult {
 	totals: JourneyTotals;
 	/** Raw memory files per chat at the end of the journey. */
 	memory: Record<string, { user: string | null; memory: string | null }>;
+	/** The skills saved in each chat at the end. */
+	skills: Record<string, Array<{ name: string; body: string }>>;
 	/** First system prompt of each session, in the order sessions started. */
 	sessionPrompts: string[];
 	/** `restart` steps. A restart reopens the latest session, so it may rewrite the prompt once. */
@@ -147,6 +150,12 @@ export async function runJourney(journey: Journey, options: RunOptions = {}): Pr
 				memory: readIfExists(join(dir, "MEMORY.md")),
 			};
 		}
+		const skills: JourneyResult["skills"] = {};
+		for (const chat of chats) {
+			skills[String(chat)] = new SkillStore(join(chatDir(runtime.dataDir, chat), "skills"))
+				.list()
+				.map(({ name, body }) => ({ name, body }));
+		}
 		return {
 			id: journey.id,
 			description: journey.description,
@@ -164,6 +173,7 @@ export async function runJourney(journey: Journey, options: RunOptions = {}): Pr
 				cpuMs: sum((turn) => turn.cpuMs),
 			},
 			memory,
+			skills,
 			sessionPrompts: [...simulator.firstSystemPrompt.values()],
 			restarts: journey.steps.filter((step) => step.kind === "restart").length,
 			toolNames: [...new Set(log.toolCalls.map((call) => call.name))],
