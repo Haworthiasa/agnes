@@ -21,6 +21,7 @@ function turn(overrides: Partial<LiveTurn> = {}): LiveTurn {
 		costComputed: costOf(price, { input: 100, output: 50, cacheRead: 300, cacheWrite: 0 }),
 		toolCalls: [],
 		systemMessagesAdded: 0,
+		toolErrors: 0,
 		jobs: [],
 		...overrides,
 	};
@@ -93,6 +94,16 @@ describe("live report", () => {
 		const after = buildLiveReport(meta(3), [cheap(0.004), cheap(0.005), cheap(0.003)]);
 		const row = compareLiveReports(before, after).find((candidate) => candidate.metric === "costUsd");
 		expect(row?.verdict).toBe("improved");
+	});
+
+	it("marks a journey with failed tool calls as suspect, and stays quiet without them", () => {
+		const clean = renderLiveMarkdown(buildLiveReport(meta(1), [run([turn()])]));
+		expect(clean).toContain("| failed tool calls | 0.0");
+		expect(clean).not.toContain("SUSPECT");
+		const failing = renderLiveMarkdown(
+			buildLiveReport(meta(2), [run([turn({ toolErrors: 3 })]), run([turn({ toolErrors: 1 })])]),
+		);
+		expect(failing).toContain("SUSPECT: j1-new-user made failed tool calls (mean 2.0 per run)");
 	});
 
 	it("renders checks, metrics and a behavior sample", () => {

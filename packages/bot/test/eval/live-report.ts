@@ -178,6 +178,8 @@ export interface LiveJourneyStats {
 	/** Cost the provider reported, for a check against the recomputed cost. */
 	costReportedUsd: number[];
 	systemMessages: number[];
+	/** Failed tool calls per run. The eval has no web backend, so a failed web call means the journey needs one. */
+	toolErrors: number[];
 }
 
 export interface LiveCheckStat {
@@ -225,6 +227,7 @@ export function buildLiveReport(meta: LiveReport["meta"], runs: LiveRun[]): Live
 			stepWallMs: own.flatMap((run) => run.turns.map((turn) => turn.wallMs)),
 			costReportedUsd: own.map((run) => run.turns.reduce((total, turn) => total + turn.costReported, 0)),
 			systemMessages: own.map((run) => run.turns.reduce((total, turn) => total + turn.systemMessagesAdded, 0)),
+			toolErrors: own.map((run) => run.turns.reduce((total, turn) => total + turn.toolErrors, 0)),
 		};
 	});
 	const checks = LIVE_CHECKS.flatMap((check): LiveCheckStat[] => {
@@ -315,7 +318,14 @@ export function renderLiveMarkdown(report: LiveReport): string {
 			`| step wall ms p50 / p95 | ${fixed(percentile(journey.stepWallMs, 0.5), 0)} / ${fixed(percentile(journey.stepWallMs, 0.95), 0)} |`,
 			`| cost reported by provider (USD) | ${summary(journey.costReportedUsd, 5)} |`,
 			`| system messages added | ${summary(journey.systemMessages, 1)} |`,
+			`| failed tool calls | ${summary(journey.toolErrors, 1)} |`,
 		);
+		if (mean(journey.toolErrors) > 0) {
+			lines.push(
+				"",
+				`SUSPECT: ${journey.id} made failed tool calls (mean ${fixed(mean(journey.toolErrors), 1)} per run). The eval has no web backend, so check that the journey does not need the web, and read the behavior sample.`,
+			);
+		}
 	}
 	for (const run of report.sample) {
 		lines.push(
