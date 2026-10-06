@@ -35,7 +35,7 @@ describe("scheduled tasks", () => {
 				allowedUserIds: new Set([OWNER]),
 				allowShell: false,
 				timeZone: TZ,
-				webBackends: [],
+				webBackends: { search: [], fetch: [] },
 				now: () => clock,
 			});
 		const jobContexts: string[][] = [];
@@ -108,7 +108,7 @@ describe("scheduled tasks", () => {
 			allowedUserIds: new Set([OWNER]),
 			allowShell: false,
 			timeZone: TZ,
-			webBackends: [],
+			webBackends: { search: [], fetch: [] },
 			now: () => clock,
 		});
 		runtime.faux.setResponses([fauxAssistantMessage("uống nước")]);

@@ -21,7 +21,7 @@ describe("long-term memory", () => {
 			allowedUserIds: new Set([OWNER]),
 			allowShell: false,
 			timeZone: "Asia/Ho_Chi_Minh",
-			webBackends: [],
+			webBackends: { search: [], fetch: [] },
 		}).gateway;
 	}
 

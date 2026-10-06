@@ -10,6 +10,7 @@ import {
 	SettingsManager,
 	type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
+import { dropUnverifiedUrls } from "./citations.ts";
 import type { ChatAgent, ChatAgentFactory } from "./types.ts";
 
 // pi's file tools accept absolute paths, so they can reach secrets outside the workspace.
@@ -45,6 +46,16 @@ function createBotResourceLoader(systemPrompt: () => string): ResourceLoader {
 		extendResources: () => {},
 		reload: async () => {},
 	};
+}
+
+/** Text the bot has actually seen: what users wrote and what tools returned. */
+function seenText(message: { role: string; content?: unknown }): string {
+	if (message.role !== "user" && message.role !== "toolResult") return "";
+	if (typeof message.content === "string") return message.content;
+	if (!Array.isArray(message.content)) return "";
+	return (message.content as Array<{ type: string; text?: string }>)
+		.map((part) => (part.type === "text" ? (part.text ?? "") : ""))
+		.join("\n");
 }
 
 function replyText(message: AssistantMessage | undefined): string {
@@ -89,7 +100,13 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 				session.setActiveToolsByName(session.getActiveToolNames());
 				await session.prompt(text, { source: "rpc" });
 				const last = session.messages.findLast((message) => message.role === "assistant");
-				return replyText(last as AssistantMessage | undefined);
+				// A URL the model did not get from a tool, the user or memory is not a source; it never reaches the user.
+				const { text: reply, dropped } = dropUnverifiedUrls(replyText(last as AssistantMessage | undefined), [
+					options.systemPrompt(chatId),
+					...session.messages.map(seenText),
+				]);
+				for (const url of dropped) console.warn(`[web] dropped unverified citation ${url}`);
+				return reply;
 			},
 			dispose: () => session.dispose(),
 		};

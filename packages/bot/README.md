@@ -53,7 +53,8 @@ Telegram ──long poll──▶ Gateway ──per chat, in order──▶ pi A
 
 - **Sessions.** Each chat has one persistent pi session under `chats/<chatId>/sessions`. A restart continues it.
 - **Memory.** `chats/<chatId>/memory/USER.md` and `MEMORY.md` hold bounded entries (1400 and 2200 chars). The system prompt is rebuilt before every turn, so a saved fact is visible in the next turn.
-- **Web.** No API keys. Tries Parallel MCP, then Exa MCP (free tiers), then DuckDuckGo lite with direct page fetches. A rate-limited backend falls through to the next one.
+- **Web.** No API keys. `web_search` takes an objective (what to find, how fresh, which sources count) plus 1-3 queries, and tries Parallel MCP, then Exa MCP, then DuckDuckGo lite; when every backend is rate limited it waits 2 s and tries once more. `web_fetch` tries Parallel, then a direct HTTP fetch, then Exa, per URL, and cuts a long page to its opening plus the parts that match the objective. A reply never shows a URL that no tool result, user message or memory contained.
+- **Web quality.** `node --import ../coding-agent/src/experimental/source-resolver.ts scripts/web-eval.ts` scores retrieval against `scripts/web-eval.questions.json` without a model; `--e2e` scores the real bot's replies through the verify-agnes skill.
 - **Schedules.** Every N minutes, daily at HH:MM, or once. Each run uses a fresh in-memory session and posts the result to the chat. Restarts neither repeat nor replay a run.
 
 ## Roadmap

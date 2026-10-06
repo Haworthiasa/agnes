@@ -6,7 +6,7 @@ import { Gateway } from "./gateway.ts";
 import { JobStore, Scheduler } from "./scheduler.ts";
 import { createMemoryTool, MemoryStore } from "./tools/memory.ts";
 import { createScheduleTool } from "./tools/schedule.ts";
-import { createWebTools, type WebBackend } from "./tools/web.ts";
+import { createWebTools, type WebBackends } from "./tools/web.ts";
 import type { ChatTransport } from "./types.ts";
 
 export interface BotOptions {
@@ -17,7 +17,7 @@ export interface BotOptions {
 	allowedUserIds: ReadonlySet<number>;
 	allowShell: boolean;
 	timeZone: string;
-	webBackends: WebBackend[];
+	webBackends: WebBackends;
 	now?: () => number;
 }
 
@@ -36,6 +36,9 @@ function persona(timeZone: string, now: number): string {
 		"You are Agnes, a personal assistant chatting on Telegram.",
 		"Reply in the user's language. Keep replies short. Use plain text, not Markdown tables.",
 		"Use web_search for anything that may have changed recently, and cite the URLs you used.",
+		"Base answers on primary sources (official sites, documentation, the original publisher, government), in English or Vietnamese. When a question is about the latest or current state, answer from the newest dated primary source; never answer it from an old or undated page when a newer one exists.",
+		"For versions, numbers, dates, prices and legal effective dates, read the primary page with web_fetch (pass an objective) unless a search excerpt from that page already states the fact.",
+		"Cite only URLs that appeared in tool results. Do not add dates, caveats or notes about sources unless the user asks.",
 		"Use schedule for reminders and recurring tasks such as a daily brief.",
 		`Current time: ${localTime} (${timeZone}).`,
 	].join("\n");
@@ -44,7 +47,7 @@ function persona(timeZone: string, now: number): string {
 /** Wires transport, per-chat sessions, memory, web and scheduling into one running bot. */
 export function createBot(options: BotOptions): Bot {
 	const now = options.now ?? Date.now;
-	const webTools = createWebTools(options.webBackends);
+	const webTools = createWebTools(options.webBackends.search, options.webBackends.fetch);
 	const memory = (chatId: number) => new MemoryStore(join(chatDir(options.dataDir, chatId), "memory"));
 	// The scheduler and the agents reference each other, so the factory reads it lazily.
 	const scheduler: Scheduler = new Scheduler({
