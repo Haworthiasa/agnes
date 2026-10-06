@@ -21,7 +21,7 @@
 		},
 		{
 			"kind": "replyMatches",
-			"pattern": "nghỉ phép",
+			"pattern": "nghỉ",
 			"required": true
 		}
 	],

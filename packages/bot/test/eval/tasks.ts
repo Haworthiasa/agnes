@@ -228,7 +228,14 @@ const TaskSchema = Type.Object(
 				reply: Type.Optional(Type.String()),
 				memory: Type.Optional(MemorySeed),
 				skills: Type.Optional(Type.Array(SkillSeed)),
+				/** A job a perfect run schedules: once, N minutes after the last turn. */
 				jobDueInMinutes: Type.Optional(Type.Number()),
+				/** Or once, at a local time `dayOffset` days after the date of the last turn. */
+				jobAt: Type.Optional(
+					Type.Object({ time: Type.String({ pattern: "^\\d{2}:\\d{2}$" }), dayOffset: Type.Integer() }, Strict),
+				),
+				/** Or a daily job at a local time. */
+				jobDaily: Type.Optional(Type.String({ pattern: "^\\d{2}:\\d{2}$" })),
 			},
 			Strict,
 		),

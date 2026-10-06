@@ -1,10 +1,12 @@
-import { mkdirSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chatDir } from "../../src/bot.ts";
+import type { Job } from "../../src/scheduler.ts";
 import { SkillStore } from "../../src/skills.ts";
 import { MemoryStore, type MemoryTarget } from "../../src/tools/memory.ts";
 import type { FetchedPage, WebBackend, WebBackends, WebResult } from "../../src/tools/web.ts";
+import { type GradeInput, localMidnight, type StateSnapshot } from "./graders.ts";
 import type { Journey, Step } from "./journeys.ts";
 import { type CapabilityTask, DEFAULT_CHAT, DEFAULT_USER, DEFAULT_USERS, type TaskTurn } from "./tasks.ts";
 
@@ -157,4 +159,70 @@ export function taskWebBackends(task: CapabilityTask): WebBackends {
 			}),
 	};
 	return { search: [backend], fetch: [backend] };
+}
+
+const MINUTE = 60_000;
+
+/** Every chat the task seeds or plays in. */
+function chatsOf(task: CapabilityTask): number[] {
+	const chats = new Set<number>([DEFAULT_CHAT, ...Object.keys(task.setup.chats ?? {}).map(Number)]);
+	for (const turn of task.turns) chats.add(turn.chat ?? DEFAULT_CHAT);
+	return [...chats];
+}
+
+/** Reads the memory files and skills of every chat of the task from a data directory. */
+export function readTaskState(task: CapabilityTask, dataDir: string): StateSnapshot {
+	const state: StateSnapshot = { memory: {}, skills: {} };
+	for (const chat of chatsOf(task)) {
+		const dir = join(chatDir(dataDir, chat), "memory");
+		const read = (name: string) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), "utf8") : null);
+		state.memory[String(chat)] = { user: read("USER.md"), memory: read("MEMORY.md") };
+		state.skills[String(chat)] = new SkillStore(join(chatDir(dataDir, chat), "skills"))
+			.list()
+			.map(({ name, body }) => ({ name, body }));
+	}
+	return state;
+}
+
+/**
+ * The trial a perfect agent would leave: the seeded state, the reference memory and skills, the reference reply on every
+ * turn, a reference job on the last turn, and no tool calls. The state graders must pass on it.
+ */
+export function referenceInput(task: CapabilityTask, dataDir: string, timeZone = "Asia/Ho_Chi_Minh"): GradeInput {
+	seedTask(task, dataDir);
+	const before = readTaskState(task, dataDir);
+	seedReference(task, dataDir);
+	const after = readTaskState(task, dataDir);
+	let clockMs = Date.parse(task.setup.clock);
+	const turns = task.turns.map((turn) => {
+		clockMs += turn.advanceMs ?? 0;
+		return {
+			user: "text" in turn ? turn.text : turn.kind,
+			reply: task.reference.reply ?? "",
+			clockMs,
+			toolCalls: [],
+			toolErrors: 0,
+			jobs: [] as Job[],
+		};
+	});
+	const last = turns.at(-1);
+	const { jobDueInMinutes, jobAt, jobDaily } = task.reference;
+	const job = (schedule: Job["schedule"], nextRunAt: number): Job => ({
+		id: "reference",
+		chatId: DEFAULT_CHAT,
+		prompt: "reference",
+		schedule,
+		nextRunAt,
+	});
+	if (last && jobDueInMinutes !== undefined) {
+		const at = last.clockMs + jobDueInMinutes * MINUTE;
+		last.jobs = [job({ kind: "once", at }, at)];
+	} else if (last && jobAt) {
+		const [hour = 0, minute = 0] = jobAt.time.split(":").map(Number);
+		const at = localMidnight(last.clockMs, jobAt.dayOffset, timeZone) + (hour * 60 + minute) * MINUTE;
+		last.jobs = [job({ kind: "once", at }, at)];
+	} else if (last && jobDaily) {
+		last.jobs = [job({ kind: "daily", time: jobDaily }, last.clockMs)];
+	}
+	return { task, turns, before, after, timeZone };
 }
