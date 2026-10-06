@@ -16,6 +16,11 @@ Cache hit rate there comes from `test/eval/cache-sim.ts`, which models zai prefi
 collapsed into the request head; whole blocks of 64 tokens). Faux does not collapse system messages, so it cannot show
 that break. The live tier shows the real numbers and tells whether the simulator has drifted.
 
+Calibration, measured on the baseline (zai/glm-5.3-flash, 3 repeats): the number of system messages added per journey
+matches exactly (6, 5, 5). The absolute cache hit rate does not: simulated 33-41%, live 47-52%. Putting tool declarations
+first in the simulated request gave 71-73%, so that variant overshoots and was not kept. Use the simulator to compare two
+builds (direction and size of a change). Use the live tier for absolute numbers.
+
 ## Commands (from `packages/bot`)
 
 ```
