@@ -64,6 +64,8 @@ export interface LiveTurn {
 	costComputed: number;
 	toolCalls: string[];
 	systemMessagesAdded: number;
+	/** Tool calls that came back as an error. */
+	toolErrors: number;
 	/** Scheduled jobs after the step. */
 	jobs: Job[];
 }
@@ -84,18 +86,24 @@ interface StoredAssistant {
 }
 
 interface StoredEntry {
-	message?: { role?: string; usage?: StoredAssistant["usage"]; content?: Array<{ type: string; name?: string }> };
+	message?: {
+		role?: string;
+		isError?: boolean;
+		usage?: StoredAssistant["usage"];
+		content?: Array<{ type: string; name?: string }>;
+	};
 	role?: string;
 	usage?: StoredAssistant["usage"];
 	content?: Array<{ type: string; name?: string }>;
 }
 
 /** Reads the assistant turns and the system message count from every stored transcript. */
-function readStored(dataDir: string): { assistants: StoredAssistant[]; systemMessages: number } {
+function readStored(dataDir: string): { assistants: StoredAssistant[]; systemMessages: number; toolErrors: number } {
 	const assistants: StoredAssistant[] = [];
 	let systemMessages = 0;
+	let toolErrors = 0;
 	const chats = join(dataDir, "chats");
-	if (!existsSync(chats)) return { assistants, systemMessages };
+	if (!existsSync(chats)) return { assistants, systemMessages, toolErrors };
 	for (const chat of readdirSync(chats)) {
 		const sessions = join(chats, chat, "sessions");
 		if (!existsSync(sessions)) continue;
@@ -105,6 +113,7 @@ function readStored(dataDir: string): { assistants: StoredAssistant[]; systemMes
 				const entry = JSON.parse(line) as StoredEntry;
 				const message = entry.message ?? entry;
 				if (message.role === "system") systemMessages++;
+				if (message.role === "toolResult" && message.isError) toolErrors++;
 				if (message.role === "assistant" && message.usage) {
 					assistants.push({
 						key: `${chat}/${file}#${index}`,
@@ -117,7 +126,7 @@ function readStored(dataDir: string): { assistants: StoredAssistant[]; systemMes
 			}
 		}
 	}
-	return { assistants, systemMessages };
+	return { assistants, systemMessages, toolErrors };
 }
 
 export interface LiveOptions {
@@ -154,7 +163,11 @@ export async function runLiveJourney(journey: Journey, options: LiveOptions): Pr
 			},
 			() => {
 				const stored = readStored(dataDir);
-				return { seen: new Set(stored.assistants.map((entry) => entry.key)), system: stored.systemMessages };
+				return {
+					seen: new Set(stored.assistants.map((entry) => entry.key)),
+					system: stored.systemMessages,
+					errors: stored.toolErrors,
+				};
 			},
 			(before, { index, step, reply, wallMs, clockMs }): LiveTurn => {
 				const stored = readStored(dataDir);
@@ -180,6 +193,7 @@ export async function runLiveJourney(journey: Journey, options: LiveOptions): Pr
 					costComputed: costOf(price, usage),
 					toolCalls: fresh.flatMap((entry) => entry.toolNames),
 					systemMessagesAdded: stored.systemMessages - before.system,
+					toolErrors: stored.toolErrors - before.errors,
 					jobs: new JobStore(join(dataDir, "jobs.json")).all(),
 				};
 			},
