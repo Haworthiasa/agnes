@@ -6,20 +6,29 @@ Private package. It is not published.
 
 ## Run
 
-1. Give the bot a model. Either run `pi` once and `/login` (the bot shares `~/.pi/agent/auth.json`), or export a provider key, for example `ZAI_API_KEY` for GLM.
-2. Create a bot with [@BotFather](https://t.me/BotFather) and copy the token.
-3. Get your numeric user id, for example from [@userinfobot](https://t.me/userinfobot).
-4. Start the bot from this directory:
+1. Create a bot with [@BotFather](https://t.me/BotFather) and copy the token.
+2. Get your numeric user id, for example from [@userinfobot](https://t.me/userinfobot).
+3. Start the bot from this directory, in a terminal:
 
 ```bash
-TELEGRAM_BOT_TOKEN=123:abc BOT_ALLOWED_USERS=111111111 npm start
+npm start
 ```
+
+The first run asks for the bot token, the allowed user ids and the model (`provider/model-id`, for example `zai/glm-5.3-flash`). When the model's provider has no credentials yet, it also asks for an API key. Later runs start without questions.
+
+- The token, user ids and model go to `<BOT_DATA_DIR>/config.json`, readable by the owner only (mode 600).
+- The API key goes to pi's `~/.pi/agent/auth.json`, shared with the pi CLI. Providers that need a subscription sign-in (OAuth) are set up with `pi` and `/login` instead.
+- Setup refuses a `BOT_DATA_DIR` inside a git repository, so the token cannot be committed.
+- `npm start -- --setup` asks every question again.
+- Without a terminal (systemd, nohup), the bot does not ask. It needs a saved config or the variables below.
+
+Environment variables override the saved config for one run and do not rewrite it.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `TELEGRAM_BOT_TOKEN` | required | Bot API token |
-| `BOT_ALLOWED_USERS` | required | Comma-separated Telegram user ids. Everyone else is ignored. |
-| `BOT_MODEL` | pi default model, else first with credentials | `provider/model-id`, for example `zai/glm-5.3-flash` |
+| `TELEGRAM_BOT_TOKEN` | saved config | Bot API token |
+| `BOT_ALLOWED_USERS` | saved config | Comma-separated Telegram user ids. Everyone else is ignored. |
+| `BOT_MODEL` | saved config, else pi default model, else first with credentials | `provider/model-id`, for example `zai/glm-5.3-flash` |
 | `BOT_DATA_DIR` | `~/.agnes-bot` | Sessions, memory, jobs and the agent workspace |
 | `BOT_TZ` | `Asia/Ho_Chi_Minh` | Time zone for schedules and the current-time line |
 | `BOT_ALLOW_SHELL` | off | `1` enables pi's file and shell tools (`read`, `grep`, `find`, `ls`, `bash`, `edit`, `write`) |
