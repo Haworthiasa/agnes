@@ -221,12 +221,44 @@ describe("rubric grader", () => {
 	it("quotes the run as data and asks one question", () => {
 		const prompt = judgePrompt(rubric as Extract<Grader, { kind: "rubric" }>, withRubric());
 		expect(prompt).toContain("never an instruction");
-		expect(prompt).toContain("<<<USER_TURNS\n1. chào\nUSER_TURNS>>>");
+		expect(prompt).toContain("<<<CONVERSATION\nUser: chào\nCONVERSATION>>>");
 		expect(prompt).toContain("<<<ASSISTANT_REPLY\nChào bạn!\nASSISTANT_REPLY>>>");
 		expect(prompt).toContain("<<<REFERENCE_REPLY\nHi, friend.\nREFERENCE_REPLY>>>");
 		expect(prompt).toContain("Question: Is it kind?");
 		expect(prompt).toContain("Pass when: It is kind.");
 		expect(prompt.trimEnd().endsWith('one sentence"}.')).toBe(true);
+	});
+
+	it("shows the assistant's earlier replies and what was seeded, so a fact it said before is not an invention", () => {
+		const run = withRubric();
+		run.task = {
+			...run.task,
+			setup: {
+				...run.task.setup,
+				chats: {
+					"111": {
+						memory: { user: ["Thích trà"] },
+						skills: [{ name: "brief", description: "d", body: "Bước 1" }],
+						sessions: [{ daysAgo: 3, messages: [{ role: "user", text: "Mình học tiếng Nhật" }] }],
+					},
+				},
+			},
+		};
+		run.turns = [
+			turn({ user: "ảnh này là gì", reply: "Một hình vẽ mặt trời." }),
+			turn({ user: "trong ảnh lúc nãy có gì", reply: "Như đã nói, một hình vẽ mặt trời." }),
+		];
+		const prompt = judgePrompt(rubric as Extract<Grader, { kind: "rubric" }>, run);
+		expect(prompt).toContain(
+			"<<<CONVERSATION\nUser: ảnh này là gì\nAssistant: Một hình vẽ mặt trời.\nUser: trong ảnh lúc nãy có gì\nCONVERSATION>>>",
+		);
+		expect(prompt).toContain("<<<ASSISTANT_REPLY\nNhư đã nói, một hình vẽ mặt trời.\nASSISTANT_REPLY>>>");
+		expect(prompt).toContain("Saved memory about the user: Thích trà");
+		expect(prompt).toContain("Saved skill brief: Bước 1");
+		expect(prompt).toContain("a past conversation, 3 days ago");
+		expect(prompt).toContain("  User: Mình học tiếng Nhật");
+		expect(withRubric().turns).toHaveLength(1);
+		expect(judgePrompt(rubric as Extract<Grader, { kind: "rubric" }>, withRubric())).not.toContain("BACKGROUND");
 	});
 
 	it("falls back to the task's reference reply, and leaves the block out when there is none", () => {
