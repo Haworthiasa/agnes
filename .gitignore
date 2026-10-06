@@ -44,3 +44,6 @@ plans/
 collect.sh
 packages/agent/docs/extensions/pi-server-artifact/index.md
 .claude/distill/
+
+# Raw eval runs; baselines stay tracked.
+packages/bot/eval/results/

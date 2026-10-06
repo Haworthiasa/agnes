@@ -19,6 +19,11 @@ export interface BotOptions {
 	timeZone: string;
 	webBackends: WebBackends;
 	now?: () => number;
+	/**
+	 * Evaluation only. Put as the first line of the system prompt, so separate runs do not share a provider's
+	 * prompt cache and one run's cache hits do not flatter the next.
+	 */
+	promptSalt?: string;
 }
 
 export interface Bot {
@@ -64,7 +69,8 @@ export function createBot(options: BotOptions): Bot {
 		modelRuntime: options.modelRuntime,
 		model: options.model,
 		allowShell: options.allowShell,
-		systemPrompt: (chatId) => `${persona(options.timeZone, now())}\n\n${memory(chatId).render()}`,
+		systemPrompt: (chatId) =>
+			`${options.promptSalt ? `${options.promptSalt}\n` : ""}${persona(options.timeZone, now())}\n\n${memory(chatId).render()}`,
 		tools: (chatId) => [...webTools, createMemoryTool(memory(chatId)), createScheduleTool(scheduler, chatId)],
 	});
 	const gateway = new Gateway({
