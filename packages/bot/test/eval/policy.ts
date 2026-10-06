@@ -90,7 +90,7 @@ function decide(context: TranscriptContext, clock: () => number, log: PolicyLog)
 	if (schedule?.[1] && declared(context, "schedule")) {
 		return toolCall("schedule", {
 			action: "create",
-			prompt: "Chạy quy trình bản tin sáng về chủ đề công nghệ",
+			prompt: "Chạy quy trình bản tin sáng với ba mẹo làm việc hiệu quả",
 			daily_at: schedule[1],
 		});
 	}

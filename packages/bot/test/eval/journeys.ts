@@ -157,7 +157,13 @@ const skillRoutine: Journey = {
 			text: "Lưu quy trình: bản tin sáng gồm 3 ý, mỗi ý một dòng bắt đầu bằng •, cuối bản tin thêm dòng 'Chúc bạn ngày mới'. Đặt tên là bản tin sáng.",
 		},
 		{ kind: "new", chat: 111, user: 7, advanceMs: DAY },
-		{ kind: "say", chat: 111, user: 7, text: "Cho mình bản tin sáng hôm nay về chủ đề công nghệ", advanceMs: MINUTE },
+		{
+			kind: "say",
+			chat: 111,
+			user: 7,
+			text: "Cho mình bản tin sáng hôm nay với ba mẹo làm việc hiệu quả",
+			advanceMs: MINUTE,
+		},
 		{
 			kind: "say",
 			chat: 111,
@@ -169,7 +175,7 @@ const skillRoutine: Journey = {
 			kind: "say",
 			chat: 111,
 			user: 7,
-			text: "Đặt lịch hằng ngày lúc 07:00 chạy quy trình bản tin sáng về chủ đề công nghệ",
+			text: "Đặt lịch hằng ngày lúc 07:00 chạy quy trình bản tin sáng với ba mẹo làm việc hiệu quả",
 			advanceMs: MINUTE,
 		},
 		{ kind: "tick", advanceMs: DAY },
