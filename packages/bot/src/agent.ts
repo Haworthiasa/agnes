@@ -12,6 +12,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { verifyReply } from "./citations.ts";
 import { clockTag } from "./clock.ts";
+import type { SessionRef } from "./tools/session-search.ts";
 import type { ChatAgent, ChatAgentFactory } from "./types.ts";
 
 // pi's file tools accept absolute paths, so they can reach secrets outside the workspace.
@@ -37,7 +38,8 @@ export interface BotAgentFactoryOptions {
 	now?: () => number;
 	/** Time zone of the `[Now: ...]` tag. */
 	timeZone: string;
-	tools?: (chatId: number) => ToolDefinition[];
+	/** `session` holds the id of the session being created; it is set once the session exists. */
+	tools?: (chatId: number, session: SessionRef) => ToolDefinition[];
 }
 
 /** Explicit loader: default discovery would pull the host's AGENTS.md, skills and extensions into the bot. */
@@ -118,7 +120,8 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 		const frozenPrompt = options.systemPrompt(chatId);
 		const sessionDir = join(options.dataDir, "chats", String(chatId), "sessions");
 		mkdirSync(sessionDir, { recursive: true });
-		const customTools = options.tools?.(chatId) ?? [];
+		const sessionRef: SessionRef = {};
+		const customTools = options.tools?.(chatId, sessionRef) ?? [];
 		const builtinTools = options.allowShell ? SHELL_TOOLS : [];
 		const { session } = await createAgentSession({
 			cwd: workspace,
@@ -136,6 +139,7 @@ export function createBotAgentFactory(options: BotAgentFactoryOptions): ChatAgen
 			tools: [...builtinTools, ...customTools.map((tool) => tool.name)],
 			customTools,
 		});
+		sessionRef.id = session.sessionId;
 		const transformContext = session.agent.transformContext;
 		session.agent.transformContext = async (messages, signal) =>
 			withoutEarlierImages(transformContext ? await transformContext(messages, signal) : messages);

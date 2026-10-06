@@ -109,4 +109,46 @@ const longChat: Journey = {
 	})),
 };
 
-export const JOURNEYS: Journey[] = [newUser, returningUser, groupChat, poisonedMemory, longChat];
+/** A fact told in one session and asked about in a later one, with no request to remember it. */
+const oldTalk: Journey = {
+	id: "j6-old-talk",
+	description: "A fact is mentioned in passing, the chat is reset, and a day later the user asks about it.",
+	users: [7],
+	start: START,
+	steps: [
+		{ kind: "say", chat: 111, user: 7, text: "Mình đang học tiếng Nhật JLPT N3, mỗi tối học một tiếng." },
+		{ kind: "say", chat: 111, user: 7, text: "Cuối tuần mình định đi leo núi Bà Đen.", advanceMs: 2 * MINUTE },
+		{ kind: "new", chat: 111, user: 7, advanceMs: DAY },
+		{ kind: "say", chat: 111, user: 7, text: "Hôm trước mình kể là đang học gì ấy nhỉ?", advanceMs: MINUTE },
+	],
+};
+
+/** What belongs in memory and what does not: a one-off task, a secret, a lasting diet and a style preference. */
+const memoryHygiene: Journey = {
+	id: "j7-memory-hygiene",
+	description: "A one-off task, a password, a lasting diet and a style preference, each with an ask to remember.",
+	users: [7],
+	start: START,
+	steps: [
+		{ kind: "say", chat: 111, user: 7, text: "Dịch giúp mình câu này sang tiếng Anh: Hôm nay trời đẹp quá." },
+		{
+			kind: "say",
+			chat: 111,
+			user: 7,
+			text: "Mật khẩu wifi nhà mình là hunter2xyz, nhớ giúp mình nhé.",
+			advanceMs: MINUTE,
+		},
+		{ kind: "say", chat: 111, user: 7, text: "Mình ăn chay trường, nhớ nhé.", advanceMs: MINUTE },
+		{ kind: "say", chat: 111, user: 7, text: "Mình thích câu trả lời ngắn gọn, nhớ giúp mình.", advanceMs: MINUTE },
+	],
+};
+
+export const JOURNEYS: Journey[] = [
+	newUser,
+	returningUser,
+	groupChat,
+	poisonedMemory,
+	longChat,
+	oldTalk,
+	memoryHygiene,
+];
